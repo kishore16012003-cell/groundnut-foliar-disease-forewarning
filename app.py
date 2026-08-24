@@ -1113,9 +1113,6 @@ Advisory:
                 )
 
 
-# ============================================================
-# DISEASE INFORMATION
-# ============================================================
 # ===================================================
 # DISEASE INFORMATION
 # ===================================================
@@ -1138,12 +1135,12 @@ elif page == "Disease Information":
         rust-coloured pustules on leaves. Disease development
         can increase under favourable humid and rainy conditions.
         """)
-
     st.image(
-        str(Path(__file__).parent / "Rust.png"),
+        "Rust.png",
         caption="Groundnut Rust Disease Symptoms",
         use_container_width=True
     )
+    
 
         st.markdown("### Symptoms")
 
@@ -1164,11 +1161,11 @@ elif page == "Disease Information":
         under severe disease pressure.
         """)
 
-    st.image(
-        str(Path(__file__).parent / "LLS.png"),
-        caption="Groundnut Late Leaf Spot (Tikka Disease) Symptoms",
-        use_container_width=True
-    )
+        st.image(
+            "LLS.png",
+            caption="Groundnut Late Leaf Spot Disease Symptoms",
+            use_container_width=True
+        )
 
         st.markdown("### Symptoms")
 
