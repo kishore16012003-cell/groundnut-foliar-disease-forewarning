@@ -1117,24 +1117,16 @@ Advisory:
 # DISEASE INFORMATION
 # ===================================================
 
-elif page == "Disease Information":
+if disease == "Rust":
 
-    st.header("🌿 Disease Information")
+    st.subheader("Groundnut Rust - Puccinia arachidis")
 
-    disease = st.selectbox(
-        "Select Disease",
-        ["Rust", "Late Leaf Spot"]
-    )
+    st.write("""
+    Rust is a fungal disease of groundnut that produces
+    rust-coloured pustules on leaves. Disease development
+    can increase under favourable humid and rainy conditions.
+    """)
 
-    if disease == "Rust":
-
-        st.subheader("Groundnut Rust – Puccinia arachidis")
-
-        st.write("""
-        Rust is a fungal disease of groundnut that produces
-        rust-coloured pustules on leaves. Disease development
-        can increase under favourable humid and rainy conditions.
-        """)
     st.image(
         "Rust.png",
         caption="Groundnut Rust Disease Symptoms",
@@ -1142,37 +1134,38 @@ elif page == "Disease Information":
     )
 
     st.markdown("### Symptoms")
+
     st.markdown("""
-        - Rust-coloured or reddish-brown pustules
-        - Mainly visible on leaves
-        - Increased disease development under humid conditions
-        - Severe infection can damage foliage
-        """)
+    - Rust-coloured or reddish-brown pustules
+    - Mainly visible on leaves
+    - Increased disease development under humid conditions
+    - Severe infection can damage foliage
+    """)
 
-    else:
+else:
 
-        st.subheader("Late Leaf Spot – Tikka Disease")
+    st.subheader("Late Leaf Spot - Tikka Disease")
 
-        st.write("""
-        Late Leaf Spot produces circular dark lesions on
-        groundnut leaves and may cause premature defoliation
-        under severe disease pressure.
-        """)
+    st.write("""
+    Late Leaf Spot produces circular dark lesions on
+    groundnut leaves and may cause premature defoliation
+    under severe disease pressure.
+    """)
 
-        st.image(
-            "LLS.png",
-            caption="Groundnut Late Leaf Spot Disease Symptoms",
-            use_container_width=True
-        )
+    st.image(
+        "LLS.png",
+        caption="Groundnut Late Leaf Spot Disease Symptoms",
+        use_container_width=True
+    )
 
-        st.markdown("### Symptoms")
+    st.markdown("### Symptoms")
 
-        st.markdown("""
-        - Circular dark leaf spots
-        - Lesions on older leaves
-        - Progressive leaf damage
-        - Premature defoliation under severe infection
-        """)
+    st.markdown("""
+    - Circular dark leaf spots
+    - Lesions on older leaves
+    - Progressive leaf damage
+    - Premature defoliation under severe infection
+    """)
 
 
 
