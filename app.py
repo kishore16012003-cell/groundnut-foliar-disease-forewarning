@@ -450,7 +450,7 @@ elif page == "Disease Prediction":
         )
 
         if district == "Cuddalore":
-        variety = st.selectbox(
+            variety = st.selectbox(
             "Groundnut Variety Type",
             ["Short Duration", "Medium Duration", "Long Duration"],
         )
