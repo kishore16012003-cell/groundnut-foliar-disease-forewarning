@@ -1,35 +1,50 @@
-
 """
-Groundnut Fungal Disease Forewarning System
--------------------------------------------
-District-specific:
-    Coimbatore
-    Cuddalore
+Groundnut Foliar Disease Forewarning System
+--------------------------------------------
+Fixed MLR equation-based prediction system.
 
-Diseases:
-    Groundnut Rust (Puccinia arachidis)
-    Late Leaf Spot (Tikka disease)
+Farmer selects:
+    District
+    Disease
+    Crop Stage
+    Forecast Period
+    Weather parameters
 
-Forecasts:
-    Current Week
-    Week 1
-    Week 2
+The application DOES NOT retrain an MLR model at runtime.
+It uses the pre-developed fixed MLR equations below.
 
-The regression equations are trained automatically from the
-Excel files in the data/ directory. No coefficients are hard-coded.
+Weather variables:
+    X1 = Maximum Temperature (°C)
+    X2 = Minimum Temperature (°C)
+    X3 = Morning RH (%)
+    X4 = Evening RH (%)
+    X5 = Wind Speed
+
+Farmer-facing output:
+    Predicted Severity (%)
+    Severity Category
+    Farmer Advisory
+
+Current fixed equations available in this version:
+    Aliyarnagar - Rust
+    Aliyarnagar - Late Leaf Spot
+    Vridhachalam - Rust
+    Vridhachalam - Late Leaf Spot
+
+IMPORTANT:
+The percentage conversion assumes a 0-9 disease severity score:
+    Severity (%) = Predicted score / 9 * 100
+
+Verify the scoring scale before final research deployment.
 """
 
-import os
 import urllib.parse
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 # ============================================================
@@ -37,7 +52,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 # ============================================================
 
 st.set_page_config(
-    page_title="Groundnut Fungal Disease Forewarning",
+    page_title="Groundnut Foliar Disease Forewarning",
     page_icon="🌱",
     layout="wide",
 )
@@ -45,33 +60,59 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 0.7rem; }
+    .block-container {
+        padding-top: 0.7rem;
+    }
 
     .hero {
-        padding: 65px 35px;
+        padding: 50px 28px;
         border-radius: 22px;
         margin-bottom: 25px;
-        background: linear-gradient(135deg, #173d24, #2d6a3f);
+        background: linear-gradient(135deg, #17452a, #39734a);
         color: white;
         text-align: center;
     }
 
-    .hero h1 { font-size: 42px; margin-bottom: 8px; }
-    .hero p { font-size: 19px; margin: 0; }
-
-    .result-card {
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #ddd;
-        margin-bottom: 12px;
+    .hero h1 {
+        font-size: 40px;
+        margin-bottom: 8px;
     }
 
-    .scope-note {
-        background: #f1f6ff;
-        padding: 12px 16px;
-        border-radius: 10px;
-        border-left: 5px solid #4777c7;
-        margin-bottom: 15px;
+    .hero p {
+        font-size: 18px;
+        margin: 0;
+    }
+
+    .result-card {
+        padding: 24px;
+        border-radius: 18px;
+        border: 1px solid #dddddd;
+        text-align: center;
+        margin: 15px 0;
+    }
+
+    .severity-number {
+        font-size: 48px;
+        font-weight: 700;
+        margin: 8px 0;
+    }
+
+    .severity-category {
+        font-size: 27px;
+        font-weight: 700;
+    }
+
+    .stage-card {
+        padding: 15px 18px;
+        border-radius: 12px;
+        background: #f3f7ff;
+        border-left: 5px solid #4675bd;
+        margin: 10px 0 20px 0;
+    }
+
+    .small-note {
+        font-size: 13px;
+        color: #666666;
     }
     </style>
     """,
@@ -80,262 +121,443 @@ st.markdown(
 
 
 # ============================================================
-# PATHS
+# FIXED MLR EQUATIONS
+#
+# Each equation is:
+# Y = intercept + b1*X1 + b2*X2 + b3*X3 + b4*X4 + b5*X5
+#
+# No Excel file is used for runtime prediction.
 # ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR
+MLR_MODELS = {
 
+    "Aliyarnagar": {
 
-# ============================================================
-# DATA CONFIGURATION
-# ============================================================
-
-DATASETS = {
-    "Coimbatore": {
         "Rust": {
-            "file": DATA_DIR / "coimbatore_rust.xlsx",
-            "disease_col": "SE SCORE",
-            "season": None,
+
+            "Current Week": {
+                "intercept": -35.0291,
+                "coefficients": [
+                    1.3226,   # X1 Max Temperature
+                    0.0387,   # X2 Min Temperature
+                    -0.0264,  # X3 Morning RH
+                    0.0236,   # X4 Evening RH
+                    -0.4046,  # X5 Wind Speed
+                ],
+                "r2": 0.0582,
+            },
+
+            "Week 1 Forecast": {
+                "intercept": -21.5995,
+                "coefficients": [
+                    1.0124,
+                    -0.1004,
+                    -0.0393,
+                    0.0296,
+                    -0.2442,
+                ],
+                "r2": 0.0310,
+            },
+
+            "Week 2 Forecast": {
+                "intercept": -5.4809,
+                "coefficients": [
+                    0.6547,
+                    -0.2231,
+                    -0.0624,
+                    0.0295,
+                    -0.1420,
+                ],
+                "r2": 0.0145,
+            },
         },
+
         "Late Leaf Spot": {
-            "file": DATA_DIR / "coimbatore_lls.xlsx",
-            "disease_col": "SE SCORE",
-            "season": None,
+
+            "Current Week": {
+                "intercept": -88.94,
+                "coefficients": [
+                    3.39,
+                    1.16,
+                    0.368,
+                    -0.0503,
+                    -1.98,
+                ],
+                "r2": None,
+            },
+
+            "Week 1 Forecast": {
+                "intercept": -69.84,
+                "coefficients": [
+                    2.86,
+                    1.20,
+                    0.294,
+                    -0.0192,
+                    0.213,
+                ],
+                "r2": None,
+            },
+
+            "Week 2 Forecast": {
+                "intercept": -76.11,
+                "coefficients": [
+                    3.08,
+                    1.12,
+                    0.0873,
+                    -0.0892,
+                    1.89,
+                ],
+                "r2": None,
+            },
         },
     },
-    "Cuddalore": {
+
+    "Vridhachalam": {
+
         "Rust": {
-            "file": DATA_DIR / "cuddalore.xlsx",
-            "disease_col": "RUST",
-            "season": "KHARIF",
+
+            "Current Week": {
+                "intercept": 5.7859,
+                "coefficients": [
+                    -0.3740,
+                    0.3648,
+                    0.0141,
+                    -0.0088,
+                    -0.4083,
+                ],
+                "r2": 0.5404,
+            },
+
+            "Week 1 Forecast": {
+                "intercept": 3.1233,
+                "coefficients": [
+                    -0.2952,
+                    0.3381,
+                    0.0124,
+                    0.0046,
+                    -0.4336,
+                ],
+                "r2": 0.3871,
+            },
+
+            "Week 2 Forecast": {
+                "intercept": 3.5604,
+                "coefficients": [
+                    -0.2651,
+                    0.2589,
+                    0.0021,
+                    0.0232,
+                    -0.3434,
+                ],
+                "r2": 0.3535,
+            },
         },
+
         "Late Leaf Spot": {
-            "file": DATA_DIR / "cuddalore.xlsx",
-            "disease_col": "LLS",
-            "season": "KHARIF",
+
+            "Current Week": {
+                "intercept": 5.2539,
+                "coefficients": [
+                    -0.5621,
+                    0.5064,
+                    0.0738,
+                    0.0327,
+                    -1.2936,
+                ],
+                "r2": 0.5140,
+            },
+
+            "Week 1 Forecast": {
+                "intercept": -1.0280,
+                "coefficients": [
+                    -0.4247,
+                    0.5228,
+                    0.0834,
+                    0.0449,
+                    -1.3799,
+                ],
+                "r2": 0.4603,
+            },
+
+            "Week 2 Forecast": {
+                "intercept": -0.2727,
+                "coefficients": [
+                    -0.3595,
+                    0.4042,
+                    0.0674,
+                    0.0630,
+                    -1.2077,
+                ],
+                "r2": 0.3937,
+            },
         },
     },
 }
 
-# Use variables available in BOTH district datasets.
-FEATURES = [
-    "MAXIMUM TEMPERATURE",
-    "MINIMUM TEMPERATURE",
-    "MORNING RH",
-    "EVENING  RH",
-    "RAINFALL",
-    "WIND SPEED",
-    "DEW POINT",
+
+# ============================================================
+# CROP STAGES
+# ============================================================
+
+CROP_STAGES = [
+    "Germination & Emergence",
+    "Vegetative Growth",
+    "Flowering",
+    "Pegging",
+    "Pod & Seed Filling",
+    "Maturity & Harvest",
 ]
 
-FEATURE_LABELS = {
-    "MAXIMUM TEMPERATURE": "Maximum Temperature (°C)",
-    "MINIMUM TEMPERATURE": "Minimum Temperature (°C)",
-    "MORNING RH": "Morning Relative Humidity (%)",
-    "EVENING  RH": "Evening Relative Humidity (%)",
-    "RAINFALL": "Rainfall (mm)",
-    "WIND SPEED": "Wind Speed",
-    "DEW POINT": "Dew Point (°C)",
+STAGE_DESCRIPTION = {
+    "Germination & Emergence":
+        "0–20 days: crop establishment and emergence.",
+    "Vegetative Growth":
+        "20–35 days: leaf and canopy development.",
+    "Flowering":
+        "30–40 days: flowering stage.",
+    "Pegging":
+        "35–60 days: pegging stage; disease monitoring becomes important.",
+    "Pod & Seed Filling":
+        "60–100 days: pod development and seed filling.",
+    "Maturity & Harvest":
+        "100–120+ days: maturity and harvesting period.",
+}
+
+# Weather-based foliar disease forewarning is activated
+# from flowering onwards in this application.
+ACTIVE_STAGES = {
+    "Flowering",
+    "Pegging",
+    "Pod & Seed Filling",
+    "Maturity & Harvest",
 }
 
 
 # ============================================================
-# DATA LOADING
+# MLR CALCULATION
 # ============================================================
 
-@st.cache_data
-def load_excel(path: str, disease_col: str, season: str | None):
-    df = pd.read_excel(path)
-    df.columns = df.columns.astype(str).str.strip()
-
-    # Excel files contain year/season/month values only at
-    # the first row of each block, so carry them forward.
-    for col in ["YEARS", "SEASONS", "MONTHS"]:
-        if col in df.columns:
-            df[col] = df[col].ffill()
-
-    if season and "SEASONS" in df.columns:
-        df["SEASONS"] = df["SEASONS"].astype(str).str.upper().str.strip()
-        df = df[df["SEASONS"] == season].copy()
-
-    for col in FEATURES + [disease_col]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Sort chronologically where possible.
-    sort_cols = [c for c in ["YEARS", "WEEKS"] if c in df.columns]
-    if sort_cols:
-        df = df.sort_values(sort_cols, kind="stable")
-
-    return df.reset_index(drop=True)
+FEATURE_NAMES = [
+    "Maximum Temperature",
+    "Minimum Temperature",
+    "Morning RH",
+    "Evening RH",
+    "Wind Speed",
+]
 
 
-@st.cache_resource
-def train_model(district: str, disease: str, horizon: int):
-    cfg = DATASETS[district][disease]
-    df = load_excel(str(cfg["file"]), cfg["disease_col"], cfg["season"])
-
-    target_col = cfg["disease_col"]
-
-    # Horizon 0 = current week.
-    # Horizon 1 = disease score one week later.
-    # Horizon 2 = disease score two weeks later.
-    if horizon == 0:
-        target = df[target_col].copy()
-    else:
-        target = df[target_col].shift(-horizon)
-
-    work = df[FEATURES].copy()
-    work["TARGET"] = target
-
-    work = work.dropna(subset=FEATURES + ["TARGET"])
-
-    if len(work) < 15:
-        raise ValueError(
-            f"Not enough observations for {district} / {disease} / "
-            f"horizon {horizon}. Available: {len(work)}"
-        )
-
-    X = work[FEATURES]
-    y = work["TARGET"]
-
-    # Chronological 80/20 validation.
-    split = max(1, int(len(work) * 0.80))
-    if split >= len(work):
-        split = len(work) - 1
-
-    model = LinearRegression()
-    model.fit(X.iloc[:split], y.iloc[:split])
-
-    test_pred = model.predict(X.iloc[split:])
-
-    metrics = {
-        "n": len(work),
-        "r2": float(r2_score(y.iloc[split:], test_pred))
-        if len(y.iloc[split:]) > 1 else np.nan,
-        "rmse": float(np.sqrt(mean_squared_error(y.iloc[split:], test_pred)))
-        if len(y.iloc[split:]) > 0 else np.nan,
-        "mae": float(mean_absolute_error(y.iloc[split:], test_pred))
-        if len(y.iloc[split:]) > 0 else np.nan,
-    }
-
-    # Refit on all available historical observations for production use.
-    final_model = LinearRegression()
-    final_model.fit(X, y)
-
-    # Historical distribution used for data-driven risk bands.
-    historical_scores = y.to_numpy(dtype=float)
-
-    return {
-        "model": final_model,
-        "metrics": metrics,
-        "historical_scores": historical_scores,
-        "coefficients": final_model.coef_,
-        "intercept": float(final_model.intercept_),
-        "n": len(work),
-    }
-
-
-# ============================================================
-# PREDICTION / EQUATION HELPERS
-# ============================================================
-
-def make_equation(model_info):
+def calculate_mlr(model_info, x1, x2, x3, x4, x5):
+    """Calculate Y using the fixed MLR equation."""
     intercept = model_info["intercept"]
-    coef = model_info["coefficients"]
+    b1, b2, b3, b4, b5 = model_info["coefficients"]
 
-    equation = f"Y = {intercept:.4f}"
+    y = (
+        intercept
+        + b1 * x1
+        + b2 * x2
+        + b3 * x3
+        + b4 * x4
+        + b5 * x5
+    )
 
-    for feature, b in zip(FEATURES, coef):
-        sign = "+" if b >= 0 else "-"
-        equation += f" {sign} {abs(b):.4f}×{feature_short(feature)}"
+    return float(y)
+
+
+def equation_text(model_info):
+    """Create a readable MLR equation."""
+    variables = ["X1", "X2", "X3", "X4", "X5"]
+
+    equation = f"Y = {model_info['intercept']:.4f}"
+
+    for variable, coefficient in zip(
+        variables,
+        model_info["coefficients"],
+    ):
+        sign = "+" if coefficient >= 0 else "-"
+        equation += (
+            f" {sign} {abs(coefficient):.4f}{variable}"
+        )
 
     return equation
 
 
-def feature_short(feature):
-    names = {
-        "MAXIMUM TEMPERATURE": "Tmax",
-        "MINIMUM TEMPERATURE": "Tmin",
-        "MORNING RH": "RHm",
-        "EVENING  RH": "RHe",
-        "RAINFALL": "Rain",
-        "WIND SPEED": "Wind",
-        "DEW POINT": "Dew",
-    }
-    return names.get(feature, feature)
+# ============================================================
+# SEVERITY CONVERSION
+# ============================================================
+
+# Disease score scale used for percentage conversion.
+# Change ONLY if your validated field scoring scale is different.
+MAX_DISEASE_SCORE = 9.0
 
 
-def predict_score(model_info, values):
-    X = pd.DataFrame([values], columns=FEATURES)
-    prediction = float(model_info["model"].predict(X)[0])
-
-    # Disease scores cannot be negative.
-    # Upper limit is taken from historical observed maximum.
-    historical_max = float(np.nanmax(model_info["historical_scores"]))
-    prediction = max(0.0, min(prediction, historical_max))
-
-    return prediction
-
-
-def risk_from_score(score, historical_scores):
+def score_to_percentage(score):
     """
-    Data-driven provisional risk classification:
-    Q1 / median / Q3 of the district-disease historical
-    disease-score distribution.
+    Convert predicted disease score to percentage.
 
-    This is NOT a substitute for an experimentally validated
-    epidemiological severity scale.
+    Assumes a 0-9 disease severity scale.
     """
-    q1, q2, q3 = np.nanpercentile(historical_scores, [25, 50, 75])
+    score = max(0.0, min(float(score), MAX_DISEASE_SCORE))
+    return (score / MAX_DISEASE_SCORE) * 100.0
 
-    if score <= q1:
-        return "Low Risk", "green", (q1, q2, q3)
-    elif score <= q2:
-        return "Moderate Risk", "orange", (q1, q2, q3)
-    elif score <= q3:
-        return "High Risk", "red", (q1, q2, q3)
-    else:
-        return "Very High Risk", "darkred", (q1, q2, q3)
+
+def severity_category(percentage):
+    """
+    Farmer-friendly category based on predicted severity percentage.
+    """
+    if percentage < 20:
+        return "Very Low"
+    if percentage < 40:
+        return "Low"
+    if percentage < 60:
+        return "Moderate"
+    if percentage < 80:
+        return "High"
+    return "Severe"
+
+
+def category_color(category):
+    return {
+        "Very Low": "green",
+        "Low": "green",
+        "Moderate": "orange",
+        "High": "red",
+        "Severe": "darkred",
+    }[category]
 
 
 # ============================================================
-# FAVOURABLE WEATHER CONDITIONS
+# FAVOURABLE WEATHER
 # ============================================================
 
-def rust_conditions(values):
-    tmean = (values["MAXIMUM TEMPERATURE"] + values["MINIMUM TEMPERATURE"]) / 2
-    rhmean = (values["MORNING RH"] + values["EVENING  RH"]) / 2
-    rain = values["RAINFALL"]
-    wind = values["WIND SPEED"]
+def weather_conditions(disease, x1, x2, x3, x4, rainfall):
+    mean_temperature = (x1 + x2) / 2.0
+    mean_rh = (x3 + x4) / 2.0
+
+    if disease == "Rust":
+        return {
+            "Temperature 25–30°C":
+                25 <= mean_temperature <= 30,
+            "Relative humidity >85%":
+                mean_rh > 85,
+            "Rainfall / rainy conditions":
+                rainfall > 0,
+        }
 
     return {
-        "Mean temperature": tmean,
-        "Mean RH": rhmean,
-        "Temperature 25–30°C": 25 <= tmean <= 30,
-        "RH >85%": rhmean > 85,
-        "Rainfall present": rain > 0,
-        "Wind + rainfall": rain > 0 and wind > 0,
-    }
-
-
-def lls_conditions(values):
-    tmean = (values["MAXIMUM TEMPERATURE"] + values["MINIMUM TEMPERATURE"]) / 2
-    rhmean = (values["MORNING RH"] + values["EVENING  RH"]) / 2
-    rain = values["RAINFALL"]
-
-    return {
-        "Mean temperature": tmean,
-        "Mean RH": rhmean,
-        "Temperature 20–30°C": 20 <= tmean <= 30,
-        "RH >90%": rhmean > 90,
-        "Rainfall present": rain > 0,
+        "Temperature 20–30°C":
+            20 <= mean_temperature <= 30,
+        "Relative humidity >90%":
+            mean_rh > 90,
+        "Rainfall / wet conditions":
+            rainfall > 0,
     }
 
 
 # ============================================================
-# UI: HOME
+# ADVISORY
+# ============================================================
+
+def get_advisory(
+    disease,
+    category,
+    crop_stage,
+    favourable_weather,
+):
+    if crop_stage not in ACTIVE_STAGES:
+        return (
+            "Disease forewarning is not activated at the selected "
+            "crop stage. Continue regular crop monitoring."
+        )
+
+    if category == "Very Low":
+        return (
+            "Disease pressure is very low. Continue regular field "
+            "monitoring."
+        )
+
+    if category == "Low":
+        return (
+            "Low disease pressure is indicated. Monitor the crop "
+            "regularly, especially older leaves."
+        )
+
+    if category == "Moderate":
+        if favourable_weather:
+            return (
+                "Moderate disease pressure is indicated and weather "
+                "conditions are favourable. Increase field monitoring "
+                "and follow locally recommended disease-management practices."
+            )
+        return (
+            "Moderate disease pressure is indicated. Continue close "
+            "field monitoring."
+        )
+
+    if category == "High":
+        return (
+            "High disease pressure is forecast. Inspect the crop closely "
+            "and take timely disease-management action according to "
+            "local agricultural recommendations and approved product labels."
+        )
+
+    return (
+        "Severe disease pressure is forecast. Immediate field inspection "
+        "and timely disease-management action are recommended according "
+        "to local agricultural recommendations and approved product labels."
+    )
+
+
+# ============================================================
+# PREDICTION FOR ALL THREE PERIODS
+# ============================================================
+
+def get_predictions(
+    district,
+    disease,
+    x1,
+    x2,
+    x3,
+    x4,
+    x5,
+):
+    results = []
+
+    for forecast in [
+        "Current Week",
+        "Week 1 Forecast",
+        "Week 2 Forecast",
+    ]:
+        model_info = MLR_MODELS[district][disease][forecast]
+
+        score = calculate_mlr(
+            model_info,
+            x1,
+            x2,
+            x3,
+            x4,
+            x5,
+        )
+
+        # The raw score is kept internal.
+        percentage = score_to_percentage(score)
+        category = severity_category(percentage)
+
+        results.append(
+            {
+                "Forecast": forecast,
+                "Predicted Severity (%)": round(
+                    percentage,
+                    1,
+                ),
+                "Severity Category": category,
+            }
+        )
+
+    return pd.DataFrame(results)
+
+
+# ============================================================
+# SIDEBAR
 # ============================================================
 
 st.sidebar.title("🌱 Navigation")
@@ -344,135 +566,130 @@ page = st.sidebar.radio(
     "Go to",
     [
         "Home",
-        "Disease Selection",
         "Disease Prediction",
-        "Symptoms Information",
-        "IDM Practices",
-        "About",
+        "Disease Information",
+        "About Developer",
     ],
 )
 
+
+# ============================================================
+# HOME
+# ============================================================
 
 if page == "Home":
 
     st.markdown(
         """
         <div class="hero">
-            <h1>🌱 Groundnut Fungal Disease Forewarning System</h1>
+            <h1>🌱 Groundnut Foliar Disease Forewarning</h1>
             <p>
-                District-specific weather-based forecasting for
-                Rust and Late Leaf Spot
+                Fixed MLR Equation-Based Weather Forewarning System
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown(
+    st.write(
         """
-        ### Welcome
+        This system provides weather-based forewarning for
+        Groundnut Rust and Late Leaf Spot.
 
-        This decision-support system provides weather-based
-        forewarning of two important groundnut fungal diseases:
-
-        - **Rust — Puccinia arachidis**
-        - **Late Leaf Spot — Tikka disease**
-
-        The forecasting system provides:
-
-        - Current-week disease score
-        - One-week-ahead forecast
-        - Two-week-ahead forecast
-        - District-specific models
-        - Weather-favourability information
-        - Farmer advisory
-        - WhatsApp alert support
+        The application uses pre-developed, district-specific
+        Multiple Linear Regression (MLR) equations. Historical
+        Excel data are not retrained during farmer prediction.
         """
     )
 
     st.info(
-        "Models are developed separately for Coimbatore and Cuddalore using their respective historical weather and disease observations."
+        "Farmer selects the current crop stage first, then enters "
+        "weather information for prediction."
+    )
+
+    st.markdown("### Prediction workflow")
+
+    st.write(
+        """
+        **District → Disease → Crop Stage → Forecast Period → "
+        "Weather → Fixed MLR Equation → Predicted Severity (%) → "
+        "Severity Category → Farmer Advisory**
+        """
     )
 
 
 # ============================================================
-# UI: DISEASE SELECTION
-# ============================================================
-
-elif page == "Disease Selection":
-
-    st.header("🦠 Select Disease")
-
-    st.write("Choose the disease for which you want to view information or forecast risk.")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("🟠 Groundnut Rust")
-        st.write("Caused by *Puccinia arachidis*.")
-        if st.button("Select Rust", use_container_width=True):
-            st.session_state["disease"] = "Rust"
-            st.success("Rust selected. Go to Disease Prediction.")
-
-    with col2:
-        st.subheader("🟤 Late Leaf Spot")
-        st.write("Also known as Tikka disease.")
-        if st.button("Select Late Leaf Spot", use_container_width=True):
-            st.session_state["disease"] = "Late Leaf Spot"
-            st.success("Late Leaf Spot selected. Go to Disease Prediction.")
-
-    st.divider()
-
-    selected = st.session_state.get("disease", "Rust")
-    st.info(f"Current selection: **{selected}**")
-
-
-# ============================================================
-# UI: DISEASE PREDICTION
+# DISEASE PREDICTION
 # ============================================================
 
 elif page == "Disease Prediction":
 
-    st.header("🔮 Disease Prediction")
+    st.header("🔮 Disease Forewarning")
+
+    # --------------------------------------------------------
+    # DISTRICT / DISEASE
+    # --------------------------------------------------------
 
     col1, col2 = st.columns(2)
 
     with col1:
         district = st.selectbox(
-            "Select District",
-            ["Coimbatore", "Cuddalore"],
-        )
-
-        disease = st.selectbox(
-            "Select Disease",
-            ["Rust", "Late Leaf Spot"],
-            index=0 if st.session_state.get("disease", "Rust") == "Rust" else 1,
-        )
-
-        if district == "Cuddalore":
-            variety = st.selectbox(
-            "Groundnut Variety Type",
-            ["Short Duration", "Medium Duration", "Long Duration"],
+            "📍 Select District",
+            list(MLR_MODELS.keys()),
         )
 
     with col2:
-        forecast = st.selectbox(
-            "Forecast Period",
-            ["Current Week", "Week 1 Forecast", "Week 2 Forecast"],
+        disease = st.selectbox(
+            "🦠 Select Disease",
+            ["Rust", "Late Leaf Spot"],
         )
 
-        phone = st.text_input(
-            "Farmer WhatsApp Number (with country code)",
-            placeholder="e.g. 919876543210",
-        )
+    # --------------------------------------------------------
+    # CROP STAGE
+    # --------------------------------------------------------
 
-    st.markdown("### 🌦 Current Week Weather")
+    st.subheader("🌱 Select Current Groundnut Crop Stage")
+
+    crop_stage = st.radio(
+        "Choose the stage that matches your field:",
+        CROP_STAGES,
+        horizontal=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="stage-card">
+            <b>Selected crop stage:</b> {crop_stage}<br>
+            {STAGE_DESCRIPTION[crop_stage]}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FORECAST
+    # --------------------------------------------------------
+
+    forecast = st.selectbox(
+        "🔮 Select Forecast Period",
+        [
+            "Current Week",
+            "Week 1 Forecast",
+            "Week 2 Forecast",
+        ],
+    )
+
+    # --------------------------------------------------------
+    # WEATHER
+    # --------------------------------------------------------
+
+    st.subheader("🌦 Weather Parameters")
 
     c1, c2 = st.columns(2)
 
     with c1:
         x1 = st.number_input(
-            "Maximum Temperature (°C)",
+            "X1 — Maximum Temperature (°C)",
             min_value=0.0,
             max_value=50.0,
             value=30.0,
@@ -480,7 +697,7 @@ elif page == "Disease Prediction":
         )
 
         x2 = st.number_input(
-            "Minimum Temperature (°C)",
+            "X2 — Minimum Temperature (°C)",
             min_value=0.0,
             max_value=50.0,
             value=22.0,
@@ -488,15 +705,7 @@ elif page == "Disease Prediction":
         )
 
         x3 = st.number_input(
-            "Morning Relative Humidity (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=85.0,
-            step=0.1,
-        )
-
-        x4 = st.number_input(
-            "Evening Relative Humidity (%)",
+            "X3 — Morning RH (%)",
             min_value=0.0,
             max_value=100.0,
             value=85.0,
@@ -504,136 +713,226 @@ elif page == "Disease Prediction":
         )
 
     with c2:
+        x4 = st.number_input(
+            "X4 — Evening RH (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=85.0,
+            step=0.1,
+        )
+
         x5 = st.number_input(
+            "X5 — Wind Speed",
+            min_value=0.0,
+            value=5.0,
+            step=0.1,
+        )
+
+        rainfall = st.number_input(
             "Rainfall (mm)",
             min_value=0.0,
             value=10.0,
             step=0.1,
         )
 
-        x6 = st.number_input(
-            "Wind Speed",
-            min_value=0.0,
-            value=5.0,
-            step=0.1,
-        )
-
-        x7 = st.number_input(
-            "Dew Point (°C)",
-            min_value=0.0,
-            max_value=50.0,
-            value=20.0,
-            step=0.1,
-        )
-
-    st.caption(
-        "Variety type is collected as crop context. It is not included as a "
-        "regression variable because the uploaded historical datasets do not "
-        "contain a variety-type column."
+    phone = st.text_input(
+        "Farmer WhatsApp Number (optional)",
+        placeholder="e.g. 919876543210",
     )
 
-    values = {
-        "MAXIMUM TEMPERATURE": x1,
-        "MINIMUM TEMPERATURE": x2,
-        "MORNING RH": x3,
-        "EVENING  RH": x4,
-        "RAINFALL": x5,
-        "WIND SPEED": x6,
-        "DEW POINT": x7,
-    }
+    # --------------------------------------------------------
+    # PREDICT BUTTON
+    # --------------------------------------------------------
 
-    if st.button("🔍 Predict Disease", type="primary", use_container_width=True):
+    if st.button(
+        "🔍 PREDICT DISEASE",
+        type="primary",
+        use_container_width=True,
+    ):
 
-        horizon_map = {
-            "Current Week": 0,
-            "Week 1 Forecast": 1,
-            "Week 2 Forecast": 2,
-        }
+        # --------------------------------------------
+        # CROP-STAGE FILTER
+        # --------------------------------------------
 
-        horizon = horizon_map[forecast]
+        if crop_stage not in ACTIVE_STAGES:
 
-        try:
-            info = train_model(district, disease, horizon)
-            score = predict_score(info, values)
-
-            risk, color, quartiles = risk_from_score(
-                score,
-                info["historical_scores"],
+            st.info(
+                "🌱 Disease forewarning is not activated at the "
+                "selected crop stage."
             )
 
-            st.success(
-                f"### Predicted {disease} Score: {score:.2f}"
+            st.write(
+                f"**Selected Crop Stage:** {crop_stage}"
             )
+
+            st.write(
+                "Continue regular crop monitoring. Weather-based "
+                "foliar disease forewarning becomes active from "
+                "the relevant crop growth stages."
+            )
+
+        else:
+
+            # --------------------------------------------
+            # FIXED MLR PREDICTION
+            # --------------------------------------------
+
+            model_info = MLR_MODELS[
+                district
+            ][
+                disease
+            ][
+                forecast
+            ]
+
+            raw_score = calculate_mlr(
+                model_info,
+                x1,
+                x2,
+                x3,
+                x4,
+                x5,
+            )
+
+            percentage = score_to_percentage(
+                raw_score
+            )
+
+            category = severity_category(
+                percentage
+            )
+
+            color = category_color(
+                category
+            )
+
+            # --------------------------------------------
+            # WEATHER CONDITIONS
+            # --------------------------------------------
+
+            conditions = weather_conditions(
+                disease,
+                x1,
+                x2,
+                x3,
+                x4,
+                rainfall,
+            )
+
+            favourable_count = sum(
+                conditions.values()
+            )
+
+            favourable_weather = (
+                favourable_count >= 2
+            )
+
+            # --------------------------------------------
+            # MAIN FARMER RESULT
+            # --------------------------------------------
 
             st.markdown(
                 f"""
                 <div class="result-card">
-                    <h2 style="color:{color};">{risk}</h2>
-                    <p><b>District:</b> {district}</p>
-                    <p><b>Disease:</b> {disease}</p>
-                    <p><b>Forecast:</b> {forecast}</p>
-                    <p><b>Variety type:</b> {variety}</p>
+                    <div>Predicted Severity</div>
+
+                    <div class="severity-number"
+                         style="color:{color};">
+                        {percentage:.1f}%
+                    </div>
+
+                    <div>Severity Category</div>
+
+                    <div class="severity-category"
+                         style="color:{color};">
+                        {category.upper()}
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
             # --------------------------------------------
-            # FAVOURABLE CONDITIONS
+            # FORECAST SUMMARY
             # --------------------------------------------
 
-            st.subheader("🌦 Favourable Weather Conditions")
+            st.write(
+                f"**District:** {district}  |  "
+                f"**Disease:** {disease}  |  "
+                f"**Forecast:** {forecast}  |  "
+                f"**Crop Stage:** {crop_stage}"
+            )
 
-            if disease == "Rust":
-                conditions = rust_conditions(values)
-            else:
-                conditions = lls_conditions(values)
+            # --------------------------------------------
+            # WEATHER FAVOURABILITY
+            # --------------------------------------------
 
-            a, b, c, d = st.columns(4)
+            st.subheader(
+                "🌦 Favourable Weather Conditions"
+            )
 
-            condition_items = list(conditions.items())
-            flags = [
-                item for item in condition_items
-                if isinstance(item[1], (bool, np.bool_))
-            ]
+            weather_cols = st.columns(
+                len(conditions)
+            )
 
-            for col, (label, flag) in zip(
-                [a, b, c, d],
-                flags[:4],
+            for col, (condition, present) in zip(
+                weather_cols,
+                conditions.items(),
             ):
                 with col:
-                    if flag:
-                        st.success("✓ " + label)
+                    if present:
+                        st.success(
+                            "✓ " + condition
+                        )
                     else:
-                        st.warning("✗ " + label)
-
-            st.write(
-                f"**Mean temperature:** "
-                f"{conditions['Mean temperature']:.2f} °C"
-            )
-
-            st.write(
-                f"**Mean relative humidity:** "
-                f"{conditions['Mean RH']:.2f} %"
-            )
+                        st.warning(
+                            "✗ " + condition
+                        )
 
             # --------------------------------------------
             # GAUGE
             # --------------------------------------------
 
-            historical_max = max(
-                float(np.nanmax(info["historical_scores"])),
-                1.0,
-            )
-
             fig = go.Figure(
                 go.Indicator(
                     mode="gauge+number",
-                    value=score,
-                    title={"text": f"{disease} Disease Score"},
+                    value=percentage,
+                    number={
+                        "suffix": "%"
+                    },
+                    title={
+                        "text":
+                        "Predicted Severity"
+                    },
                     gauge={
-                        "axis": {"range": [0, historical_max]},
-                        "bar": {"color": color},
+                        "axis": {
+                            "range": [0, 100]
+                        },
+                        "bar": {
+                            "color": color
+                        },
+                        "steps": [
+                            {
+                                "range": [0, 20],
+                                "color": "#d9f2d9",
+                            },
+                            {
+                                "range": [20, 40],
+                                "color": "#fff2cc",
+                            },
+                            {
+                                "range": [40, 60],
+                                "color": "#ffe0b2",
+                            },
+                            {
+                                "range": [60, 80],
+                                "color": "#f4b183",
+                            },
+                            {
+                                "range": [80, 100],
+                                "color": "#f4cccc",
+                            },
+                        ],
                     },
                 )
             )
@@ -644,56 +943,39 @@ elif page == "Disease Prediction":
             )
 
             # --------------------------------------------
-            # ALL THREE FORECASTS
+            # CURRENT / WEEK 1 / WEEK 2
             # --------------------------------------------
 
-            st.subheader("📊 Current / Week 1 / Week 2 Forecast")
+            st.subheader(
+                "📊 Current Week, Week 1 & Week 2"
+            )
 
-            all_scores = []
+            results_df = get_predictions(
+                district,
+                disease,
+                x1,
+                x2,
+                x3,
+                x4,
+                x5,
+            )
 
-            for h, label in [
-                (0, "Current Week"),
-                (1, "Week 1"),
-                (2, "Week 2"),
-            ]:
-                model_info = train_model(
-                    district,
-                    disease,
-                    h,
-                )
-
-                s = predict_score(
-                    model_info,
-                    values,
-                )
-
-                r, _, _ = risk_from_score(
-                    s,
-                    model_info["historical_scores"],
-                )
-
-                all_scores.append(
-                    {
-                        "Forecast": label,
-                        "Predicted Score": round(s, 2),
-                        "Risk": r,
-                    }
-                )
-
-            result_df = pd.DataFrame(all_scores)
-
+            # Farmer-friendly table only.
             st.dataframe(
-                result_df,
+                results_df,
                 use_container_width=True,
                 hide_index=True,
             )
 
             fig_trend = px.line(
-                result_df,
+                results_df,
                 x="Forecast",
-                y="Predicted Score",
+                y="Predicted Severity (%)",
                 markers=True,
-                title=f"{disease} Forecast Trend",
+                range_y=[0, 100],
+                title=(
+                    f"{disease} Severity Forecast"
+                ),
             )
 
             st.plotly_chart(
@@ -702,140 +984,127 @@ elif page == "Disease Prediction":
             )
 
             # --------------------------------------------
-            # WEATHER CHART
+            # FARMER ADVISORY
             # --------------------------------------------
 
-            weather_df = pd.DataFrame(
-                {
-                    "Parameter": [
-                        "Max Temp",
-                        "Min Temp",
-                        "Morning RH",
-                        "Evening RH",
-                        "Rainfall",
-                        "Wind",
-                        "Dew Point",
-                    ],
-                    "Value": [
-                        x1,
-                        x2,
-                        x3,
-                        x4,
-                        x5,
-                        x6,
-                        x7,
-                    ],
-                }
+            st.subheader(
+                "👨‍🌾 Farmer Advisory"
             )
 
-            fig_weather = px.bar(
-                weather_df,
-                x="Parameter",
-                y="Value",
-                title="Weather Parameters Used",
+            advisory = get_advisory(
+                disease,
+                category,
+                crop_stage,
+                favourable_weather,
             )
 
-            st.plotly_chart(
-                fig_weather,
-                use_container_width=True,
-            )
+            if category in ["High", "Severe"]:
+                st.warning(advisory)
 
-            # --------------------------------------------
-            # EQUATION
-            # --------------------------------------------
+            elif category == "Moderate":
+                st.info(advisory)
 
-            st.subheader("🧮 Forecast Equation")
-
-            st.code(
-                make_equation(info),
-                language="text",
-            )
-
-            st.caption(
-                f"Training observations: {info['n']} | "
-                f"Chronological validation R²: {info['metrics']['r2']:.3f} | "
-                f"RMSE: {info['metrics']['rmse']:.3f} | "
-                f"MAE: {info['metrics']['mae']:.3f}"
-            )
-
-            # --------------------------------------------
-            # ADVISORY
-            # --------------------------------------------
-
-            if disease == "Rust":
-                advisory = (
-                    "Monitor the crop closely when temperature is 25–30°C, "
-                    "relative humidity is above 85%, and rainy/windy "
-                    "conditions persist. Follow locally recommended "
-                    "integrated disease-management practices."
-                )
             else:
-                advisory = (
-                    "Monitor the crop closely under 20–30°C, very high "
-                    "relative humidity, frequent rain/dew and prolonged "
-                    "leaf-wetness conditions. Follow locally recommended "
-                    "integrated disease-management practices."
+                st.success(advisory)
+
+            # --------------------------------------------
+            # TECHNICAL MODEL DETAILS
+            # Not shown in the main farmer result.
+            # --------------------------------------------
+
+            with st.expander(
+                "Technical Model Details"
+            ):
+
+                st.write(
+                    "**Fixed MLR equation used:**"
                 )
 
-            st.warning("**Advisory:** " + advisory)
+                st.code(
+                    equation_text(model_info),
+                    language="text",
+                )
+
+                st.write(
+                    "X1 = Maximum Temperature"
+                )
+                st.write(
+                    "X2 = Minimum Temperature"
+                )
+                st.write(
+                    "X3 = Morning RH"
+                )
+                st.write(
+                    "X4 = Evening RH"
+                )
+                st.write(
+                    "X5 = Wind Speed"
+                )
+
+                if model_info["r2"] is not None:
+                    st.write(
+                        f"Model R²: "
+                        f"{model_info['r2']:.4f}"
+                    )
+                else:
+                    st.write(
+                        "R²: Not entered for this reference equation."
+                    )
+
+                st.caption(
+                    "The application uses this fixed equation directly. "
+                    "The historical Excel data are not retrained during "
+                    "runtime prediction."
+                )
 
             # --------------------------------------------
             # WHATSAPP
             # --------------------------------------------
 
-            selected_row = result_df[
-                result_df["Forecast"] == forecast
-            ].iloc[0]
-
-            selected_score = float(
-                selected_row["Predicted Score"]
-            )
-
-            selected_risk = selected_row["Risk"]
-
-            if phone and selected_risk in ["High Risk", "Very High Risk"]:
+            if (
+                phone
+                and category in ["High", "Severe"]
+            ):
 
                 message = f"""
-🌱 Groundnut Disease Forewarning
+🌱 Groundnut Foliar Disease Forewarning
 
 District: {district}
 Disease: {disease}
+Crop Stage: {crop_stage}
 Forecast: {forecast}
 
-Predicted Disease Score: {selected_score:.2f}
-Risk Level: {selected_risk}
-
-Weather:
-Maximum Temperature: {x1:.1f} °C
-Minimum Temperature: {x2:.1f} °C
-Morning RH: {x3:.1f} %
-Evening RH: {x4:.1f} %
-Rainfall: {x5:.1f} mm
-Wind Speed: {x6:.1f}
-Dew Point: {x7:.1f} °C
+Predicted Severity: {percentage:.1f}%
+Severity Category: {category}
 
 Advisory:
 {advisory}
 
-- Groundnut Disease Forewarning System
+- Groundnut Foliar Disease Forewarning System
 """
 
-                encoded = urllib.parse.quote(message)
+                encoded_message = urllib.parse.quote(
+                    message
+                )
+
                 whatsapp_url = (
-                    f"https://wa.me/{phone}?text={encoded}"
+                    f"https://wa.me/{phone}"
+                    f"?text={encoded_message}"
                 )
 
                 st.markdown(
                     f"""
-                    <a href="{whatsapp_url}" target="_blank">
+                    <a href="{whatsapp_url}"
+                       target="_blank">
                         <button style="
-                            background:#25D366;
+                            background-color:#25D366;
                             color:white;
                             padding:12px 22px;
                             border:none;
                             border-radius:8px;
                             font-size:16px;
-                            font-weight:bold;">
+                            font-weight:bold;
+                            cursor:pointer;">
                             📲 Send WhatsApp Alert
                         </button>
                     </a>
@@ -843,27 +1112,14 @@ Advisory:
                     unsafe_allow_html=True,
                 )
 
-            elif phone:
-                st.info(
-                    "No high-risk WhatsApp alert is required "
-                    "for the selected forecast."
-                )
-
-        except Exception as exc:
-            st.error(
-                "Prediction could not be completed. "
-                "Check the Excel file and required columns."
-            )
-            st.exception(exc)
-
 
 # ============================================================
-# SYMPTOMS
+# DISEASE INFORMATION
 # ============================================================
 
-elif page == "Symptoms Information":
+elif page == "Disease Information":
 
-    st.header("🌿 Disease Symptoms")
+    st.header("🌿 Disease Information")
 
     disease = st.selectbox(
         "Select Disease",
@@ -872,138 +1128,99 @@ elif page == "Symptoms Information":
 
     if disease == "Rust":
 
-        st.subheader("Groundnut Rust — Puccinia arachidis")
+        st.subheader(
+            "Groundnut Rust — Puccinia arachidis"
+        )
 
         st.write(
             """
-            Rust produces small rust-coloured pustules on the leaves.
-            Under favourable conditions, lesions and pustules can increase
-            rapidly and contribute to premature deterioration of foliage.
+            Rust is a fungal disease of groundnut that produces
+            rust-coloured pustules on leaves. Disease development
+            can increase under favourable humid and rainy conditions.
             """
         )
 
-        st.markdown("### Typical symptoms")
+        st.markdown("### Symptoms")
+
         st.markdown(
             """
             - Rust-coloured or reddish-brown pustules
-            - Pustules mainly visible on leaves
-            - Increased severity under humid and rainy weather
-            - Premature deterioration of foliage in severe infection
+            - Mainly visible on leaves
+            - Increased disease development under humid conditions
+            - Severe infection can damage foliage
             """
-        )
-
-        st.info(
-            "Add your own approved rust symptom image as "
-            "`assets/rust_symptom.jpg` in the GitHub repository."
         )
 
     else:
 
-        st.subheader("Late Leaf Spot — Tikka Disease")
+        st.subheader(
+            "Late Leaf Spot — Tikka Disease"
+        )
 
         st.write(
             """
-            Late Leaf Spot produces circular dark lesions on groundnut
-            leaves and may cause premature leaf loss when disease becomes
-            severe.
+            Late Leaf Spot produces circular dark lesions on
+            groundnut leaves and may cause premature defoliation
+            under severe disease pressure.
             """
         )
 
-        st.markdown("### Typical symptoms")
+        st.markdown("### Symptoms")
+
         st.markdown(
             """
             - Circular dark leaf spots
-            - Yellowing around affected areas may occur
+            - Lesions on older leaves
             - Progressive leaf damage
-            - Premature defoliation under severe disease
+            - Premature defoliation under severe infection
             """
         )
-
-        st.info(
-            "Add your own approved LLS symptom image as "
-            "`assets/lls_symptom.jpg` in the GitHub repository."
-        )
-
-
-# ============================================================
-# IDM
-# ============================================================
-
-elif page == "IDM Practices":
-
-    st.header("🛡️ Integrated Disease Management")
-
-    disease = st.selectbox(
-        "Select Disease",
-        ["Rust", "Late Leaf Spot"],
-    )
-
-    st.subheader(f"{disease} — Recommended IDM Principles")
-
-    st.markdown(
-        """
-        - Use locally recommended and suitable varieties.
-        - Maintain good field sanitation.
-        - Avoid unnecessary prolonged leaf wetness where practical.
-        - Monitor disease development regularly.
-        - Use weather-based warning information for timely scouting.
-        - Apply fungicides only according to locally approved labels,
-          extension recommendations and resistance-management guidance.
-        - Follow recommended spray intervals and safety precautions.
-        """
-    )
-
-    st.warning(
-        "The forewarning system is a decision-support tool. "
-        "It should support field scouting and local agricultural "
-        "recommendations rather than replace them."
-    )
 
 
 # ============================================================
 # ABOUT
 # ============================================================
 
-elif page == "About":
+elif page == "About Developer":
 
-    st.header("ℹ️ About the System")
+    st.header("ℹ️ About the Developer")
+
+    st.write(
+        """
+        **Developed by:** Kishor Kumar
+
+        **Project:** Groundnut Foliar Disease Forewarning System
+
+        **Year:** 2026
+        """
+    )
 
     st.markdown(
         """
-        ### Groundnut Fungal Disease Forewarning System
-
-        **Diseases**
-
-        - Groundnut Rust (*Puccinia arachidis*)
-        - Late Leaf Spot (Tikka disease)
-
-        **District models**
-
-        - Coimbatore
-        - Cuddalore
-
-        **Forecast horizons**
-
-        - Current Week
-        - Week 1
-        - Week 2
-
         ### Model approach
 
-        District-specific regression models are trained from historical
-        weather and disease-score observations. The disease target is
-        shifted by 0, 1 and 2 weeks to produce current, one-week-ahead
-        and two-week-ahead models.
+        The application uses fixed district-specific Multiple Linear
+        Regression equations developed from historical weather and
+        disease observations.
 
-        Coimbatore and Cuddalore observations are not mixed during
-        district-specific model training.
+        The production application does not retrain the MLR model
+        when a farmer enters weather data.
         """
     )
 
-    st.success(
-        "Model scope should always be reported with the district and "
-        "season covered by the training data."
+    st.markdown(
+        """
+        ### Farmer-facing output
+
+        The prediction page displays:
+
+        - Predicted Severity (%)
+        - Severity Category
+        - Farmer Advisory
+        """
     )
 
-    st.write("**Developer:** Kishor Kumar")
-    st.write("**Year:** 2026")
+    st.caption(
+        "Current fixed-equation models in this version: "
+        "Aliyarnagar and Vridhachalam for Rust and Late Leaf Spot."
+    )
