@@ -1116,12 +1116,15 @@ Advisory:
 # ============================================================
 # DISEASE INFORMATION
 # ============================================================
+# ===================================================
+# DISEASE INFORMATION
+# ===================================================
 
 elif page == "Disease Information":
 
-     st.header("🌿 Disease Information")
+    st.header("🌿 Disease Information")
 
-     disease = st.selectbox(
+    disease = st.selectbox(
         "Select Disease",
         ["Rust", "Late Leaf Spot"]
     )
@@ -1137,7 +1140,7 @@ elif page == "Disease Information":
         """)
 
         st.image(
-            BASE_DIR / "Rust.png",
+            str(BASE_DIR / "Rust.png"),
             caption="Groundnut Rust Disease Symptoms",
             use_container_width=True
         )
@@ -1151,18 +1154,18 @@ elif page == "Disease Information":
         - Severe infection can damage foliage
         """)
 
-        else:
+    else:
 
-             st.subheader("Late Leaf Spot – Tikka Disease")
+        st.subheader("Late Leaf Spot – Tikka Disease")
 
-             st.write("""
+        st.write("""
         Late Leaf Spot produces circular dark lesions on
         groundnut leaves and may cause premature defoliation
         under severe disease pressure.
         """)
 
-             st.image(
-            BASE_DIR / "LLS.png",
+        st.image(
+            str(BASE_DIR / "LLS.png"),
             caption="Groundnut Late Leaf Spot (Tikka Disease) Symptoms",
             use_container_width=True
         )
@@ -1175,6 +1178,7 @@ elif page == "Disease Information":
         - Progressive leaf damage
         - Premature defoliation under severe infection
         """)
+
 
 
 # ============================================================
