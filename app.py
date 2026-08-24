@@ -1140,11 +1140,9 @@ elif page == "Disease Information":
         caption="Groundnut Rust Disease Symptoms",
         use_container_width=True
     )
-    
 
-        st.markdown("### Symptoms")
-
-        st.markdown("""
+    st.markdown("### Symptoms")
+    st.markdown("""
         - Rust-coloured or reddish-brown pustules
         - Mainly visible on leaves
         - Increased disease development under humid conditions
