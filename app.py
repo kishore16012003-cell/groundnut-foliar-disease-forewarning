@@ -1126,13 +1126,19 @@ elif page == "Disease Information":
         ["Rust", "Late Leaf Spot"],
     )
 
-    if disease == "Rust":
+   if disease == "Rust":
 
-        st.subheader(
-            "Groundnut Rust — Puccinia arachidis"
-        )
+    st.subheader(
+        "Groundnut Rust - Puccinia arachidis"
+    )
 
-        st.write(
+    st.image(
+        "Rust.png",
+        caption="Groundnut Rust Symptoms",
+        use_container_width=True
+    )
+
+    st.write(
             """
             Rust is a fungal disease of groundnut that produces
             rust-coloured pustules on leaves. Disease development
@@ -1151,30 +1157,30 @@ elif page == "Disease Information":
             """
         )
 
-    else:
+  else:
 
-        st.subheader(
-            "Late Leaf Spot — Tikka Disease"
-        )
+    st.subheader("Late Leaf Spot – Tikka Disease")
 
-        st.write(
-            """
-            Late Leaf Spot produces circular dark lesions on
-            groundnut leaves and may cause premature defoliation
-            under severe disease pressure.
-            """
-        )
+    st.write("""
+    Late Leaf Spot produces circular dark lesions on
+    groundnut leaves and may cause premature defoliation
+    under severe disease pressure.
+    """)
 
-        st.markdown("### Symptoms")
+    st.image(
+        BASE_DIR / "LLS.png",
+        caption="Groundnut Late Leaf Spot (Tikka Disease) Symptoms",
+        use_container_width=True
+    )
 
-        st.markdown(
-            """
-            - Circular dark leaf spots
-            - Lesions on older leaves
-            - Progressive leaf damage
-            - Premature defoliation under severe infection
-            """
-        )
+    st.markdown("### Symptoms")
+
+    st.markdown("""
+    - Circular dark leaf spots
+    - Lesions on older leaves
+    - Progressive leaf damage
+    - Premature defoliation under severe infection
+    """)
 
 
 # ============================================================
