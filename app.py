@@ -45,7 +45,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-
+from pathlib import Path
 
 # ============================================================
 # PAGE CONFIG
@@ -1139,11 +1139,11 @@ elif page == "Disease Information":
         can increase under favourable humid and rainy conditions.
         """)
 
-        st.image(
-            str(BASE_DIR / "Rust.png"),
-            caption="Groundnut Rust Disease Symptoms",
-            use_container_width=True
-        )
+    st.image(
+        str(Path(__file__).parent / "Rust.png"),
+        caption="Groundnut Rust Disease Symptoms",
+        use_container_width=True
+    )
 
         st.markdown("### Symptoms")
 
@@ -1164,11 +1164,11 @@ elif page == "Disease Information":
         under severe disease pressure.
         """)
 
-        st.image(
-            str(BASE_DIR / "LLS.png"),
-            caption="Groundnut Late Leaf Spot (Tikka Disease) Symptoms",
-            use_container_width=True
-        )
+    st.image(
+        str(Path(__file__).parent / "LLS.png"),
+        caption="Groundnut Late Leaf Spot (Tikka Disease) Symptoms",
+        use_container_width=True
+    )
 
         st.markdown("### Symptoms")
 
