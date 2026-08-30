@@ -1,41 +1,33 @@
 """
-Groundnut Foliar Disease Forewarning System
---------------------------------------------
-Fixed MLR equation-based prediction system.
+================================================================
+TNAU Disease Prediction System
+================================================================
+A modern, professional Streamlit application for weather-based
+forewarning of Groundnut foliar diseases (Rust and Late Leaf Spot).
 
-Farmer selects:
-    District
-    Disease
-    Crop Stage
-    Forecast Period
-    Weather parameters
+Developed for: Tamil Nadu Agricultural University (TNAU)
+Project      : Groundnut Foliar Disease Forewarning
+Developer    : Kishor Kumar
+Year         : 2026
 
-The application DOES NOT retrain an MLR model at runtime.
-It uses the pre-developed fixed MLR equations below.
+----------------------------------------------------------------
+Backend note (kept internal — NOT surfaced in the UI):
+----------------------------------------------------------------
+The prediction logic uses pre-developed, district-specific
+equations. The end-user simply sees a clean "Predict Disease"
+experience; the underlying model details are intentionally
+hidden from the farmer-facing interface.
 
-Weather variables:
-    X1 = Maximum Temperature (°C)
-    X2 = Minimum Temperature (°C)
+Weather variables used internally:
+    X1 = Maximum Temperature (deg C)
+    X2 = Minimum Temperature (deg C)
     X3 = Morning RH (%)
     X4 = Evening RH (%)
     X5 = Wind Speed
 
-Farmer-facing output:
-    Predicted Severity (%)
-    Severity Category
-    Farmer Advisory
-
-Current fixed equations available in this version:
-    Aliyarnagar - Rust
-    Aliyarnagar - Late Leaf Spot
-    Vridhachalam - Rust
-    Vridhachalam - Late Leaf Spot
-
-IMPORTANT:
 The percentage conversion assumes a 0-9 disease severity score:
     Severity (%) = Predicted score / 9 * 100
-
-Verify the scoring scale before final research deployment.
+================================================================
 """
 
 import urllib.parse
@@ -47,86 +39,491 @@ import plotly.graph_objects as go
 import streamlit as st
 from pathlib import Path
 
+
 # ============================================================
 # PAGE CONFIG
 # ============================================================
 
 st.set_page_config(
-    page_title="Groundnut Foliar Disease Forewarning",
+    page_title="TNAU Disease Prediction System",
     page_icon="🌱",
     layout="wide",
-)
-
-st.markdown(
-    """
-    <style>
-    .block-container {
-        padding-top: 0.7rem;
-    }
-
-    .hero {
-        padding: 50px 28px;
-        border-radius: 22px;
-        margin-bottom: 25px;
-        background: linear-gradient(135deg, #17452a, #39734a);
-        color: white;
-        text-align: center;
-    }
-
-    .hero h1 {
-        font-size: 40px;
-        margin-bottom: 8px;
-    }
-
-    .hero p {
-        font-size: 18px;
-        margin: 0;
-    }
-
-    .result-card {
-        padding: 24px;
-        border-radius: 18px;
-        border: 1px solid #dddddd;
-        text-align: center;
-        margin: 15px 0;
-    }
-
-    .severity-number {
-        font-size: 48px;
-        font-weight: 700;
-        margin: 8px 0;
-    }
-
-    .severity-category {
-        font-size: 27px;
-        font-weight: 700;
-    }
-
-    .stage-card {
-        padding: 15px 18px;
-        border-radius: 12px;
-        background: #f3f7ff;
-        border-left: 5px solid #4675bd;
-        margin: 10px 0 20px 0;
-    }
-
-    .small-note {
-        font-size: 13px;
-        color: #666666;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
+    initial_sidebar_state="expanded",
 )
 
 
 # ============================================================
-# FIXED MLR EQUATIONS
+# THEME / STYLES  —  Green & White, modern, professional
+# ============================================================
+
+CUSTOM_CSS = """
+<style>
+/* ----------  Design tokens  ---------- */
+:root {
+    --tnau-green-darkest: #0f3d1f;
+    --tnau-green-dark:    #1b5e20;
+    --tnau-green:         #2e7d32;
+    --tnau-green-mid:     #388e3c;
+    --tnau-green-light:   #43a047;
+    --tnau-green-accent:  #66bb6a;
+    --tnau-green-soft:    #a5d6a7;
+    --tnau-green-bg:      #e8f5e9;
+    --tnau-green-border:  #c8e6c9;
+    --tnau-green-tint:    #f1f8f2;
+    --tnau-text-dark:     #16311c;
+    --tnau-text:          #2f4a36;
+    --tnau-text-muted:    #5f6b63;
+    --tnau-white:         #ffffff;
+    --tnau-bg:            #f8fbf8;
+    --tnau-shadow:        0 6px 22px rgba(27, 94, 32, 0.08);
+    --tnau-shadow-hover:  0 14px 36px rgba(27, 94, 32, 0.16);
+    --tnau-radius:        16px;
+    --tnau-radius-sm:     10px;
+}
+
+/* ----------  Global / page background  ---------- */
+html, body, [data-testid="stAppViewContainer"] {
+    background: var(--tnau-bg);
+    color: var(--tnau-text);
+    font-family: 'Segoe UI', 'Inter', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
+}
+
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 3rem;
+    max-width: 1280px;
+}
+
+/* ----------  Top header bar  ---------- */
+.tnau-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 22px;
+    margin-bottom: 22px;
+    background: linear-gradient(135deg, #ffffff 0%, #f1f8f2 100%);
+    border: 1px solid var(--tnau-green-border);
+    border-radius: var(--tnau-radius);
+    box-shadow: var(--tnau-shadow);
+    animation: fadeInDown 0.6s ease-out;
+}
+.tnau-header img.tnau-logo {
+    height: 64px;
+    width: 64px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #ffffff;
+    padding: 4px;
+    border: 2px solid var(--tnau-green-border);
+    transition: transform 0.3s ease;
+}
+.tnau-header:hover img.tnau-logo { transform: rotate(6deg) scale(1.04); }
+.tnau-header .tnau-title-wrap { flex: 1; min-width: 0; }
+.tnau-header .tnau-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    color: var(--tnau-green-darkest);
+    line-height: 1.15;
+    margin: 0;
+}
+.tnau-header .tnau-subtitle {
+    font-size: 13px;
+    color: var(--tnau-text-muted);
+    margin-top: 4px;
+    font-weight: 500;
+}
+.tnau-header .tnau-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--tnau-green-dark);
+    background: var(--tnau-green-bg);
+    border: 1px solid var(--tnau-green-border);
+    padding: 6px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+/* ----------  Hero  ---------- */
+.hero {
+    position: relative;
+    padding: 54px 36px;
+    border-radius: 24px;
+    margin-bottom: 28px;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,0.16) 0%, transparent 38%),
+        radial-gradient(circle at 88% 82%, rgba(255,255,255,0.10) 0%, transparent 42%),
+        linear-gradient(135deg, #0f3d1f 0%, #1b5e20 45%, #2e7d32 100%);
+    color: #ffffff;
+    text-align: center;
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgba(15, 61, 31, 0.25);
+    animation: fadeIn 0.7s ease-out;
+}
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 20% 80%, rgba(165, 214, 167, 0.15) 0%, transparent 28%);
+    pointer-events: none;
+}
+.hero h1 {
+    font-size: 38px;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    letter-spacing: 0.3px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.18);
+}
+.hero p {
+    font-size: 17px;
+    margin: 0;
+    color: #e8f5e9;
+    font-weight: 400;
+    opacity: 0.96;
+}
+.hero .hero-chips {
+    margin-top: 22px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.hero .hero-chip {
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.28);
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+}
+
+/* ----------  Cards / sections  ---------- */
+.section-card {
+    background: #ffffff;
+    border: 1px solid var(--tnau-green-border);
+    border-radius: var(--tnau-radius);
+    padding: 24px 26px;
+    margin: 18px 0;
+    box-shadow: var(--tnau-shadow);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.section-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--tnau-shadow-hover);
+}
+
+.section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--tnau-green-dark);
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.section-title::before {
+    content: "";
+    width: 4px;
+    height: 18px;
+    background: linear-gradient(180deg, var(--tnau-green-light), var(--tnau-green-dark));
+    border-radius: 2px;
+    display: inline-block;
+}
+
+/* ----------  Stage card  ---------- */
+.stage-card {
+    padding: 16px 20px;
+    border-radius: var(--tnau-radius-sm);
+    background: linear-gradient(135deg, var(--tnau-green-bg) 0%, #ffffff 100%);
+    border-left: 5px solid var(--tnau-green-light);
+    margin: 12px 0 18px 0;
+    color: var(--tnau-text-dark);
+    transition: border-left-color 0.25s ease, transform 0.25s ease;
+}
+.stage-card:hover { transform: translateX(3px); border-left-color: var(--tnau-green-dark); }
+.stage-card b { color: var(--tnau-green-dark); }
+
+/* ----------  Result card  ---------- */
+.result-card {
+    padding: 30px 24px;
+    border-radius: 20px;
+    border: 1px solid var(--tnau-green-border);
+    text-align: center;
+    margin: 18px 0;
+    background:
+        radial-gradient(circle at 50% 0%, var(--tnau-green-bg) 0%, #ffffff 70%);
+    box-shadow: var(--tnau-shadow);
+    animation: popIn 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+.result-card .result-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tnau-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+.severity-number {
+    font-size: 56px;
+    font-weight: 800;
+    margin: 6px 0 4px 0;
+    line-height: 1;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+.severity-category {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 6px;
+    letter-spacing: 0.6px;
+}
+.result-summary {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--tnau-green-border);
+    font-size: 14px;
+    color: var(--tnau-text-muted);
+}
+.result-summary b { color: var(--tnau-green-dark); }
+
+/* ----------  Info / advisory tiles  ---------- */
+.info-tile {
+    background: #ffffff;
+    border: 1px solid var(--tnau-green-border);
+    border-radius: var(--tnau-radius-sm);
+    padding: 16px 18px;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    height: 100%;
+}
+.info-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--tnau-shadow-hover);
+}
+.info-tile.ok  { background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%); border-color: var(--tnau-green-soft); }
+.info-tile.no  { background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%); border-color: #ffe082; }
+.info-tile .tile-icon { font-size: 22px; margin-bottom: 6px; }
+.info-tile .tile-text { font-size: 13px; color: var(--tnau-text); font-weight: 500; line-height: 1.4; }
+
+/* ----------  Feature cards (Home)  ---------- */
+.feature-card {
+    background: #ffffff;
+    border: 1px solid var(--tnau-green-border);
+    border-radius: var(--tnau-radius);
+    padding: 22px 20px;
+    text-align: center;
+    height: 100%;
+    transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+    box-shadow: var(--tnau-shadow);
+}
+.feature-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--tnau-shadow-hover);
+    border-color: var(--tnau-green-light);
+}
+.feature-card .feature-icon {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--tnau-green-bg) 0%, var(--tnau-green-soft) 100%);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px auto;
+    font-size: 26px;
+    transition: transform 0.3s ease;
+}
+.feature-card:hover .feature-icon { transform: rotate(-8deg) scale(1.06); }
+.feature-card h3 {
+    font-size: 16px; font-weight: 700; color: var(--tnau-green-dark);
+    margin: 0 0 8px 0;
+}
+.feature-card p {
+    font-size: 13px; color: var(--tnau-text-muted);
+    margin: 0; line-height: 1.55;
+}
+
+/* ----------  Buttons  ---------- */
+.stButton > button {
+    background: linear-gradient(135deg, var(--tnau-green) 0%, var(--tnau-green-dark) 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    letter-spacing: 0.4px;
+    box-shadow: 0 6px 16px rgba(27, 94, 32, 0.28) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+}
+.stButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 24px rgba(27, 94, 32, 0.38) !important;
+    filter: brightness(1.05) !important;
+}
+.stButton > button:active { transform: translateY(0) !important; }
+
+/* ----------  Inputs / selectboxes  ---------- */
+.stSelectbox > div > div,
+.stNumberInput > div > div > input,
+.stTextInput > div > div > input {
+    border-radius: 10px !important;
+    border-color: var(--tnau-green-border) !important;
+    background: #ffffff !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+.stSelectbox > div > div:focus-within,
+.stNumberInput > div > div > input:focus,
+.stTextInput > div > div > input:focus {
+    border-color: var(--tnau-green-light) !important;
+    box-shadow: 0 0 0 3px rgba(67, 160, 71, 0.16) !important;
+}
+
+/* ----------  Radio (horizontal stage selector)  ---------- */
+.stRadio > div[role="radiogroup"] label {
+    padding: 8px 14px !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--tnau-green-border) !important;
+    margin: 4px !important;
+    transition: all 0.18s ease !important;
+    background: #ffffff;
+}
+.stRadio > div[role="radiogroup"] label:hover {
+    background: var(--tnau-green-bg) !important;
+    border-color: var(--tnau-green-light) !important;
+}
+.stRadio > div[role="radiogroup"] label[data-checked="true"] {
+    background: linear-gradient(135deg, var(--tnau-green-bg) 0%, #ffffff 100%) !important;
+    border-color: var(--tnau-green) !important;
+    box-shadow: 0 4px 12px rgba(27, 94, 32, 0.12);
+}
+
+/* ----------  Sidebar  ---------- */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #ffffff 0%, var(--tnau-green-tint) 100%);
+    border-right: 1px solid var(--tnau-green-border);
+}
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label {
+    border-radius: 10px;
+    margin: 4px 0;
+    transition: all 0.18s ease;
+}
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label:hover {
+    background: var(--tnau-green-bg);
+}
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] {
+    background: linear-gradient(135deg, var(--tnau-green) 0%, var(--tnau-green-dark) 100%);
+    color: #ffffff;
+    border-color: var(--tnau-green-dark);
+    box-shadow: 0 4px 12px rgba(27, 94, 32, 0.22);
+}
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] span {
+    color: #ffffff;
+}
+
+/* ----------  Streamlit native element tweaks  ---------- */
+h1, h2, h3, h4 { color: var(--tnau-green-dark) !important; }
+h2 { border-bottom: 2px solid var(--tnau-green-border); padding-bottom: 8px; }
+.stAlert { border-radius: 12px !important; }
+.stAlert > div { border-radius: 12px !important; }
+.stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid var(--tnau-green-border); }
+.stImage > img { border-radius: 12px; box-shadow: var(--tnau-shadow); }
+hr { border-color: var(--tnau-green-border) !important; }
+
+/* ----------  Footer  ---------- */
+.app-footer {
+    margin-top: 40px;
+    padding: 20px 24px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--tnau-green-tint) 0%, #ffffff 100%);
+    border: 1px solid var(--tnau-green-border);
+    border-radius: var(--tnau-radius);
+    color: var(--tnau-text-muted);
+    font-size: 13px;
+}
+.app-footer b { color: var(--tnau-green-dark); }
+
+/* ----------  Animations  ---------- */
+@keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn      { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+
+/* ----------  Responsive  ---------- */
+@media (max-width: 768px) {
+    .hero { padding: 36px 18px; }
+    .hero h1 { font-size: 26px; }
+    .hero p { font-size: 14px; }
+    .tnau-header { flex-wrap: wrap; }
+    .tnau-header img.tnau-logo { height: 52px; width: 52px; }
+    .tnau-header .tnau-title { font-size: 18px; }
+    .tnau-header .tnau-badge { display: none; }
+    .severity-number { font-size: 42px; }
+    .block-container { padding-left: 14px; padding-right: 14px; }
+}
+
+/* hide streamlit's default "made with streamlit" footer & menu clutter if desired */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+</style>
+"""
+
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+
+# ============================================================
+# TNAU HEADER  —  logo + title bar shown on every page
+# ============================================================
+
+def render_header(active_page: str = "") -> None:
+    """Render the green-and-white TNAU branded header bar."""
+    # Resolve logo path. Look next to this script first, then in /download,
+    # finally fall back to nothing (the alt text shows).
+    logo_candidates = [
+        Path(__file__).parent / "tnau_logo.png",
+        Path("tnau_logo.png"),
+        Path("/home/z/my-project/download/tnau_logo.png"),
+    ]
+    logo_src = ""
+    for cand in logo_candidates:
+        if cand.exists():
+            try:
+                import base64
+                data = base64.b64encode(cand.read_bytes()).decode()
+                logo_src = f"data:image/png;base64,{data}"
+            except Exception:
+                logo_src = str(cand)
+            break
+
+    logo_html = (
+        f'<img class="tnau-logo" src="{logo_src}" alt="TNAU Logo" />'
+        if logo_src
+        else '<div class="tnau-logo" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--tnau-green-dark);">TNAU</div>'
+    )
+
+    badge = f"· {active_page}" if active_page else ""
+    st.markdown(
+        f"""
+        <div class="tnau-header">
+            {logo_html}
+            <div class="tnau-title-wrap">
+                <div class="tnau-title">TNAU Disease Prediction System</div>
+                <div class="tnau-subtitle">
+                    Tamil Nadu Agricultural University &nbsp;|&nbsp;
+                    Groundnut Foliar Disease Forewarning
+                </div>
+            </div>
+            <div class="tnau-badge">🌱 {active_page or 'Home'}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# BACKEND PREDICTION ENGINE
 #
-# Each equation is:
-# Y = intercept + b1*X1 + b2*X2 + b3*X3 + b4*X4 + b5*X5
-#
-# No Excel file is used for runtime prediction.
+# Kept intact from the original application. The MLR terminology is
+# intentionally NOT exposed anywhere in the UI — the user only sees a
+# clean "Predict Disease" experience.
 # ============================================================
 
 MLR_MODELS = {
@@ -294,6 +691,11 @@ MLR_MODELS = {
     },
 }
 
+# Internal default prediction key used by the backend equation lookup.
+# The end-user never sees this string — the UI presents a single
+# "Predict Disease" experience with no period selection.
+DEFAULT_FORECAST = "Current Week"
+
 
 # ============================================================
 # CROP STAGES
@@ -334,7 +736,7 @@ ACTIVE_STAGES = {
 
 
 # ============================================================
-# MLR CALCULATION
+# PREDICTION CALCULATION
 # ============================================================
 
 FEATURE_NAMES = [
@@ -347,7 +749,7 @@ FEATURE_NAMES = [
 
 
 def calculate_mlr(model_info, x1, x2, x3, x4, x5):
-    """Calculate Y using the fixed MLR equation."""
+    """Calculate the predicted severity score using the fixed equation."""
     intercept = model_info["intercept"]
     b1, b2, b3, b4, b5 = model_info["coefficients"]
 
@@ -363,47 +765,22 @@ def calculate_mlr(model_info, x1, x2, x3, x4, x5):
     return float(y)
 
 
-def equation_text(model_info):
-    """Create a readable MLR equation."""
-    variables = ["X1", "X2", "X3", "X4", "X5"]
-
-    equation = f"Y = {model_info['intercept']:.4f}"
-
-    for variable, coefficient in zip(
-        variables,
-        model_info["coefficients"],
-    ):
-        sign = "+" if coefficient >= 0 else "-"
-        equation += (
-            f" {sign} {abs(coefficient):.4f}{variable}"
-        )
-
-    return equation
-
-
 # ============================================================
 # SEVERITY CONVERSION
 # ============================================================
 
 # Disease score scale used for percentage conversion.
-# Change ONLY if your validated field scoring scale is different.
 MAX_DISEASE_SCORE = 9.0
 
 
 def score_to_percentage(score):
-    """
-    Convert predicted disease score to percentage.
-
-    Assumes a 0-9 disease severity scale.
-    """
+    """Convert predicted disease score to percentage (0–9 scale)."""
     score = max(0.0, min(float(score), MAX_DISEASE_SCORE))
     return (score / MAX_DISEASE_SCORE) * 100.0
 
 
 def severity_category(percentage):
-    """
-    Farmer-friendly category based on predicted severity percentage.
-    """
+    """Farmer-friendly category based on predicted severity percentage."""
     if percentage < 20:
         return "Very Low"
     if percentage < 40:
@@ -415,13 +792,24 @@ def severity_category(percentage):
     return "Severe"
 
 
+# Theme-aligned category colors (greens for low, ambers/reds for higher risk)
 def category_color(category):
     return {
-        "Very Low": "green",
-        "Low": "green",
-        "Moderate": "orange",
-        "High": "red",
-        "Severe": "darkred",
+        "Very Low":  "#2e7d32",   # green
+        "Low":       "#43a047",   # lighter green
+        "Moderate":  "#f9a825",   # amber
+        "High":      "#ef6c00",   # orange
+        "Severe":    "#c62828",   # red
+    }[category]
+
+
+def category_emoji(category):
+    return {
+        "Very Low":  "🟢",
+        "Low":       "🟢",
+        "Moderate":  "🟡",
+        "High":      "🟠",
+        "Severe":    "🔴",
     }[category]
 
 
@@ -457,12 +845,7 @@ def weather_conditions(disease, x1, x2, x3, x4, rainfall):
 # ADVISORY
 # ============================================================
 
-def get_advisory(
-    disease,
-    category,
-    crop_stage,
-    favourable_weather,
-):
+def get_advisory(disease, category, crop_stage, favourable_weather):
     if crop_stage not in ACTIVE_STAGES:
         return (
             "Disease forewarning is not activated at the selected "
@@ -508,127 +891,197 @@ def get_advisory(
 
 
 # ============================================================
-# PREDICTION FOR ALL THREE PERIODS
+# SIDEBAR NAVIGATION
 # ============================================================
 
-def get_predictions(
-    district,
-    disease,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-):
-    results = []
+with st.sidebar:
+    st.markdown(
+        """
+        <div style="padding: 6px 4px 14px 4px;">
+            <div style="font-size: 15px; font-weight: 800; color: var(--tnau-green-dark);">
+                🌱 Navigation
+            </div>
+            <div style="font-size: 12px; color: var(--tnau-text-muted); margin-top: 2px;">
+                TNAU Disease Prediction System
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    for forecast in [
-        "Current Week",
-        "Week 1 Forecast",
-        "Week 2 Forecast",
-    ]:
-        model_info = MLR_MODELS[district][disease][forecast]
+    page = st.radio(
+        "Go to",
+        [
+            "Home",
+            "Disease Prediction",
+            "Disease Information",
+            "About Developer",
+        ],
+        label_visibility="collapsed",
+    )
 
-        score = calculate_mlr(
-            model_info,
-            x1,
-            x2,
-            x3,
-            x4,
-            x5,
-        )
-
-        # The raw score is kept internal.
-        percentage = score_to_percentage(score)
-        category = severity_category(percentage)
-
-        results.append(
-            {
-                "Forecast": forecast,
-                "Predicted Severity (%)": round(
-                    percentage,
-                    1,
-                ),
-                "Severity Category": category,
-            }
-        )
-
-    return pd.DataFrame(results)
+    st.markdown("---")
+    st.caption("🌱  TNAU · 2026")
 
 
 # ============================================================
-# SIDEBAR
-# ============================================================
-
-st.sidebar.title("🌱 Navigation")
-
-page = st.sidebar.radio(
-    "Go to",
-    [
-        "Home",
-        "Disease Prediction",
-        "Disease Information",
-        "About Developer",
-    ],
-)
-
-
-# ============================================================
-# HOME
+# HOME PAGE
 # ============================================================
 
 if page == "Home":
 
+    render_header("Home")
+
     st.markdown(
         """
         <div class="hero">
-            <h1>🌱 Groundnut Foliar Disease Forewarning</h1>
+            <h1>🌱 TNAU Disease Prediction System</h1>
             <p>
-                Fixed MLR Equation-Based Weather Forewarning System
+                Weather-based forewarning for Groundnut Rust and Late Leaf Spot —
+                empowering farmers with timely, actionable disease advisories.
+            </p>
+            <div class="hero-chips">
+                <span class="hero-chip">🌾 Groundnut</span>
+                <span class="hero-chip">🌦️ Weather-Driven</span>
+                <span class="hero-chip">📍 District-Specific</span>
+                <span class="hero-chip">👨‍🌾 Farmer-Friendly</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### About the System")
+
+    st.markdown(
+        """
+        <div class="section-card">
+            <p style="font-size:15px; line-height:1.7; margin:0; color:var(--tnau-text);">
+                This system provides <b style="color:var(--tnau-green-dark);">weather-based
+                forewarning</b> for two major foliar diseases of groundnut —
+                <b>Rust</b> and <b>Late Leaf Spot</b>. By combining current
+                weather parameters with district-specific knowledge, the
+                application delivers a clear severity prediction and a
+                practical farmer advisory that can help guide field-level
+                decisions.
+            </p>
+            <p style="font-size:15px; line-height:1.7; margin:14px 0 0 0; color:var(--tnau-text);">
+                The interface is intentionally simple: select your district,
+                choose the disease of interest, indicate the current crop
+                stage, enter the local weather values, and click
+                <b style="color:var(--tnau-green-dark);">Predict Disease</b>.
+                The system responds with the predicted severity, an
+                easy-to-read category, and a recommended course of action.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.write(
-        """
-        This system provides weather-based forewarning for
-        Groundnut Rust and Late Leaf Spot.
+    st.markdown("### What You Get")
 
-        The application uses pre-developed, district-specific
-        Multiple Linear Regression (MLR) equations. Historical
-        Excel data are not retrained during farmer prediction.
+    f1, f2, f3 = st.columns(3)
+    with f1:
+        st.markdown(
+            """
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Predicted Severity</h3>
+                <p>A clear percentage and category that tells you how strong the disease pressure is expected to be.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with f2:
+        st.markdown(
+            """
+            <div class="feature-card">
+                <div class="feature-icon">🌦️</div>
+                <h3>Weather Favourability</h3>
+                <p>See which current weather conditions are conducive to disease development in your field.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with f3:
+        st.markdown(
+            """
+            <div class="feature-card">
+                <div class="feature-icon">👨‍🌾</div>
+                <h3>Farmer Advisory</h3>
+                <p>Receive a practical, locally-relevant recommendation on monitoring and disease management.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("### Quick Start")
+
+    st.markdown(
         """
+        <div class="section-card">
+            <div class="section-title">Three Simple Steps</div>
+            <div style="display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:200px; padding:14px 16px; background:var(--tnau-green-bg); border-radius:12px; border-left:4px solid var(--tnau-green-light);">
+                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">STEP 1</div>
+                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">Select District & Disease</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">Choose your location and the disease you want to assess.</div>
+                </div>
+                <div style="flex:1; min-width:200px; padding:14px 16px; background:var(--tnau-green-bg); border-radius:12px; border-left:4px solid var(--tnau-green-light);">
+                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">STEP 2</div>
+                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">Enter Crop Stage & Weather</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">Pick the current growth stage and fill in the local weather values.</div>
+                </div>
+                <div style="flex:1; min-width:200px; padding:14px 16px; background:var(--tnau-green-bg); border-radius:12px; border-left:4px solid var(--tnau-green-light);">
+                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">STEP 3</div>
+                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">Click Predict Disease</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">Get your severity prediction, weather favourability, and advisory.</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.info(
-        "Farmer selects the current crop stage first, then enters "
-        "weather information for prediction."
-    )
-
-    st.markdown("### Prediction workflow")
-
-    st.write(
+    st.markdown(
         """
-        **District → Disease → Crop Stage → Forecast Period → "
-        "Weather → Fixed MLR Equation → Predicted Severity (%) → "
-        "Severity Category → Farmer Advisory**
-        """
+        <div class="app-footer">
+            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
+            Tamil Nadu Agricultural University &nbsp;·&nbsp; 2026
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 
 # ============================================================
-# DISEASE PREDICTION
+# DISEASE PREDICTION PAGE
 # ============================================================
 
 elif page == "Disease Prediction":
 
-    st.header("🔮 Disease Forewarning")
+    render_header("Disease Prediction")
+
+    st.markdown(
+        """
+        <div class="hero" style="padding: 32px 28px;">
+            <h1 style="font-size:28px;">🔮 Disease Prediction</h1>
+            <p>Enter your field conditions and click <b>Predict Disease</b> to receive an instant forecast.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # --------------------------------------------------------
     # DISTRICT / DISEASE
     # --------------------------------------------------------
+    st.markdown(
+        """
+        <div class="section-card">
+            <div class="section-title">Location & Disease</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     col1, col2 = st.columns(2)
 
@@ -644,52 +1097,63 @@ elif page == "Disease Prediction":
             ["Rust", "Late Leaf Spot"],
         )
 
+    st.markdown("</div>", unsafe_allow_html=True)
+
     # --------------------------------------------------------
     # CROP STAGE
     # --------------------------------------------------------
-
-    st.subheader("🌱 Select Current Groundnut Crop Stage")
+    st.markdown(
+        """
+        <div class="section-card">
+            <div class="section-title">🌱 Current Groundnut Crop Stage</div>
+            <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:10px;">
+                Choose the stage that best matches your field.
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     crop_stage = st.radio(
-        "Choose the stage that matches your field:",
+        "Crop stage",
         CROP_STAGES,
         horizontal=True,
+        label_visibility="collapsed",
     )
 
     st.markdown(
         f"""
         <div class="stage-card">
             <b>Selected crop stage:</b> {crop_stage}<br>
+            <span style="font-size:13px; color:var(--tnau-text-muted);">
             {STAGE_DESCRIPTION[crop_stage]}
+            {" ⚠️ Forewarning is active from the Flowering stage onwards." if crop_stage not in ACTIVE_STAGES else " ✅ Forewarning is active at this stage."}
+            </span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # --------------------------------------------------------
-    # FORECAST
-    # --------------------------------------------------------
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    forecast = st.selectbox(
-        "🔮 Select Forecast Period",
-        [
-            "Current Week",
-            "Week 1 Forecast",
-            "Week 2 Forecast",
-        ],
+    # --------------------------------------------------------
+    # WEATHER PARAMETERS
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <div class="section-card">
+            <div class="section-title">🌦️ Weather Parameters</div>
+            <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:14px;">
+                Enter the current weather values observed in your field.
+            </div>
+        """,
+        unsafe_allow_html=True,
     )
-
-    # --------------------------------------------------------
-    # WEATHER
-    # --------------------------------------------------------
-
-    st.subheader("🌦 Weather Parameters")
 
     c1, c2 = st.columns(2)
 
     with c1:
         x1 = st.number_input(
-            "X1 — Maximum Temperature (°C)",
+            "🌡️ Maximum Temperature (°C)",
             min_value=0.0,
             max_value=50.0,
             value=30.0,
@@ -697,7 +1161,7 @@ elif page == "Disease Prediction":
         )
 
         x2 = st.number_input(
-            "X2 — Minimum Temperature (°C)",
+            "🌡️ Minimum Temperature (°C)",
             min_value=0.0,
             max_value=50.0,
             value=22.0,
@@ -705,7 +1169,7 @@ elif page == "Disease Prediction":
         )
 
         x3 = st.number_input(
-            "X3 — Morning RH (%)",
+            "💧 Morning Relative Humidity (%)",
             min_value=0.0,
             max_value=100.0,
             value=85.0,
@@ -714,7 +1178,7 @@ elif page == "Disease Prediction":
 
     with c2:
         x4 = st.number_input(
-            "X4 — Evening RH (%)",
+            "💧 Evening Relative Humidity (%)",
             min_value=0.0,
             max_value=100.0,
             value=85.0,
@@ -722,130 +1186,103 @@ elif page == "Disease Prediction":
         )
 
         x5 = st.number_input(
-            "X5 — Wind Speed",
+            "💨 Wind Speed (km/h)",
             min_value=0.0,
             value=5.0,
             step=0.1,
         )
 
         rainfall = st.number_input(
-            "Rainfall (mm)",
+            "🌧️ Rainfall (mm)",
             min_value=0.0,
             value=10.0,
             step=0.1,
         )
 
     phone = st.text_input(
-        "Farmer WhatsApp Number (optional)",
+        "📱 Farmer WhatsApp Number (optional — used only to send an alert for High/Severe predictions)",
         placeholder="e.g. 919876543210",
     )
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # --------------------------------------------------------
     # PREDICT BUTTON
     # --------------------------------------------------------
-
-    if st.button(
+    predict_clicked = st.button(
         "🔍 PREDICT DISEASE",
         type="primary",
         use_container_width=True,
-    ):
+    )
+
+    if predict_clicked:
 
         # --------------------------------------------
         # CROP-STAGE FILTER
         # --------------------------------------------
-
         if crop_stage not in ACTIVE_STAGES:
 
-            st.info(
-                "🌱 Disease forewarning is not activated at the "
-                "selected crop stage."
-            )
-
-            st.write(
-                f"**Selected Crop Stage:** {crop_stage}"
-            )
-
-            st.write(
-                "Continue regular crop monitoring. Weather-based "
-                "foliar disease forewarning becomes active from "
-                "the relevant crop growth stages."
+            st.markdown(
+                """
+                <div class="result-card" style="background:linear-gradient(135deg,#fff8e1 0%,#ffffff 70%); border-color:#ffe082;">
+                    <div class="result-label">Forewarning Not Active</div>
+                    <div style="font-size:32px; margin:8px 0;">🌱</div>
+                    <div style="font-size:18px; font-weight:700; color:#ef6c00;">
+                        Disease forewarning is not activated at this crop stage.
+                    </div>
+                    <div class="result-summary">
+                        <b>Selected Crop Stage:</b> """ + crop_stage + """<br>
+                        Continue regular crop monitoring. Weather-based foliar disease
+                        forewarning becomes active from the <b>Flowering</b> stage onwards.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
         else:
 
             # --------------------------------------------
-            # FIXED MLR PREDICTION
+            # PREDICTION  (uses the internal default equation)
             # --------------------------------------------
-
-            model_info = MLR_MODELS[
-                district
-            ][
-                disease
-            ][
-                forecast
-            ]
+            model_info = MLR_MODELS[district][disease][DEFAULT_FORECAST]
 
             raw_score = calculate_mlr(
-                model_info,
-                x1,
-                x2,
-                x3,
-                x4,
-                x5,
+                model_info, x1, x2, x3, x4, x5,
             )
 
-            percentage = score_to_percentage(
-                raw_score
-            )
-
-            category = severity_category(
-                percentage
-            )
-
-            color = category_color(
-                category
-            )
+            percentage = score_to_percentage(raw_score)
+            category = severity_category(percentage)
+            color = category_color(category)
+            emoji = category_emoji(category)
 
             # --------------------------------------------
             # WEATHER CONDITIONS
             # --------------------------------------------
-
             conditions = weather_conditions(
-                disease,
-                x1,
-                x2,
-                x3,
-                x4,
-                rainfall,
+                disease, x1, x2, x3, x4, rainfall,
             )
-
-            favourable_count = sum(
-                conditions.values()
-            )
-
-            favourable_weather = (
-                favourable_count >= 2
-            )
+            favourable_count = sum(conditions.values())
+            favourable_weather = favourable_count >= 2
 
             # --------------------------------------------
-            # MAIN FARMER RESULT
+            # MAIN RESULT CARD
             # --------------------------------------------
-
             st.markdown(
                 f"""
                 <div class="result-card">
-                    <div>Predicted Severity</div>
-
-                    <div class="severity-number"
-                         style="color:{color};">
+                    <div class="result-label">Predicted Severity</div>
+                    <div class="severity-number" style="color:{color};">
                         {percentage:.1f}%
                     </div>
-
-                    <div>Severity Category</div>
-
-                    <div class="severity-category"
-                         style="color:{color};">
-                        {category.upper()}
+                    <div class="result-label" style="margin-top:8px;">Severity Category</div>
+                    <div class="severity-category" style="color:{color};">
+                        {emoji} {category.upper()}
+                    </div>
+                    <div class="result-summary">
+                        <b>District:</b> {district} &nbsp;·&nbsp;
+                        <b>Disease:</b> {disease} &nbsp;·&nbsp;
+                        <b>Crop Stage:</b> {crop_stage}
                     </div>
                 </div>
                 """,
@@ -853,226 +1290,117 @@ elif page == "Disease Prediction":
             )
 
             # --------------------------------------------
-            # FORECAST SUMMARY
-            # --------------------------------------------
-
-            st.write(
-                f"**District:** {district}  |  "
-                f"**Disease:** {disease}  |  "
-                f"**Forecast:** {forecast}  |  "
-                f"**Crop Stage:** {crop_stage}"
-            )
-
-            # --------------------------------------------
             # WEATHER FAVOURABILITY
             # --------------------------------------------
-
-            st.subheader(
-                "🌦 Favourable Weather Conditions"
+            st.markdown(
+                """
+                <div class="section-card">
+                    <div class="section-title">🌦️ Favourable Weather Conditions</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:14px;">
+                        Conditions that favour disease development in your field right now.
+                    </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-            weather_cols = st.columns(
-                len(conditions)
-            )
-
-            for col, (condition, present) in zip(
-                weather_cols,
-                conditions.items(),
-            ):
+            weather_cols = st.columns(len(conditions))
+            for col, (condition, present) in zip(weather_cols, conditions.items()):
                 with col:
-                    if present:
-                        st.success(
-                            "✓ " + condition
-                        )
-                    else:
-                        st.warning(
-                            "✗ " + condition
-                        )
+                    cls = "ok" if present else "no"
+                    mark = "✓" if present else "✗"
+                    st.markdown(
+                        f"""
+                        <div class="info-tile {cls}">
+                            <div class="tile-icon">{mark}</div>
+                            <div class="tile-text">{condition}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
             # --------------------------------------------
             # GAUGE
             # --------------------------------------------
+            st.markdown(
+                """
+                <div class="section-card">
+                    <div class="section-title">📊 Severity Gauge</div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             fig = go.Figure(
                 go.Indicator(
                     mode="gauge+number",
                     value=percentage,
-                    number={
-                        "suffix": "%"
-                    },
-                    title={
-                        "text":
-                        "Predicted Severity"
-                    },
+                    number={"suffix": "%"},
+                    title={"text": "Predicted Severity"},
                     gauge={
-                        "axis": {
-                            "range": [0, 100]
-                        },
-                        "bar": {
-                            "color": color
-                        },
+                        "axis": {"range": [0, 100]},
+                        "bar": {"color": color},
                         "steps": [
-                            {
-                                "range": [0, 20],
-                                "color": "#d9f2d9",
-                            },
-                            {
-                                "range": [20, 40],
-                                "color": "#fff2cc",
-                            },
-                            {
-                                "range": [40, 60],
-                                "color": "#ffe0b2",
-                            },
-                            {
-                                "range": [60, 80],
-                                "color": "#f4b183",
-                            },
-                            {
-                                "range": [80, 100],
-                                "color": "#f4cccc",
-                            },
+                            {"range": [0, 20],   "color": "#e8f5e9"},
+                            {"range": [20, 40],  "color": "#dcedc8"},
+                            {"range": [40, 60],  "color": "#fff9c4"},
+                            {"range": [60, 80],  "color": "#ffe0b2"},
+                            {"range": [80, 100], "color": "#ffcdd2"},
                         ],
+                        "threshold": {
+                            "line": {"color": color, "width": 4},
+                            "thickness": 0.85,
+                            "value": percentage,
+                        },
                     },
                 )
             )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
+            fig.update_layout(
+                height=300,
+                margin=dict(l=20, r=20, t=40, b=20),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font={"color": "#1b3a23", "family": "Segoe UI, sans-serif"},
             )
+            st.plotly_chart(fig, use_container_width=True)
 
-            # --------------------------------------------
-            # CURRENT / WEEK 1 / WEEK 2
-            # --------------------------------------------
-
-            st.subheader(
-                "📊 Current Week, Week 1 & Week 2"
-            )
-
-            results_df = get_predictions(
-                district,
-                disease,
-                x1,
-                x2,
-                x3,
-                x4,
-                x5,
-            )
-
-            # Farmer-friendly table only.
-            st.dataframe(
-                results_df,
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            fig_trend = px.line(
-                results_df,
-                x="Forecast",
-                y="Predicted Severity (%)",
-                markers=True,
-                range_y=[0, 100],
-                title=(
-                    f"{disease} Severity Forecast"
-                ),
-            )
-
-            st.plotly_chart(
-                fig_trend,
-                use_container_width=True,
-            )
+            st.markdown("</div>", unsafe_allow_html=True)
 
             # --------------------------------------------
             # FARMER ADVISORY
             # --------------------------------------------
-
-            st.subheader(
-                "👨‍🌾 Farmer Advisory"
+            advisory = get_advisory(
+                disease, category, crop_stage, favourable_weather,
             )
 
-            advisory = get_advisory(
-                disease,
-                category,
-                crop_stage,
-                favourable_weather,
+            st.markdown(
+                """
+                <div class="section-card">
+                    <div class="section-title">👨‍🌾 Farmer Advisory</div>
+                """,
+                unsafe_allow_html=True,
             )
 
             if category in ["High", "Severe"]:
                 st.warning(advisory)
-
             elif category == "Moderate":
                 st.info(advisory)
-
             else:
                 st.success(advisory)
 
-            # --------------------------------------------
-            # TECHNICAL MODEL DETAILS
-            # Not shown in the main farmer result.
-            # --------------------------------------------
-
-            with st.expander(
-                "Technical Model Details"
-            ):
-
-                st.write(
-                    "**Fixed MLR equation used:**"
-                )
-
-                st.code(
-                    equation_text(model_info),
-                    language="text",
-                )
-
-                st.write(
-                    "X1 = Maximum Temperature"
-                )
-                st.write(
-                    "X2 = Minimum Temperature"
-                )
-                st.write(
-                    "X3 = Morning RH"
-                )
-                st.write(
-                    "X4 = Evening RH"
-                )
-                st.write(
-                    "X5 = Wind Speed"
-                )
-
-                if model_info["r2"] is not None:
-                    st.write(
-                        f"Model R²: "
-                        f"{model_info['r2']:.4f}"
-                    )
-                else:
-                    st.write(
-                        "R²: Not entered for this reference equation."
-                    )
-
-                st.caption(
-                    "The application uses this fixed equation directly. "
-                    "The historical Excel data are not retrained during "
-                    "runtime prediction."
-                )
+            st.markdown("</div>", unsafe_allow_html=True)
 
             # --------------------------------------------
-            # WHATSAPP
+            # WHATSAPP ALERT (High / Severe only)
             # --------------------------------------------
-
-            if (
-                phone
-                and category in ["High", "Severe"]
-            ):
+            if phone and category in ["High", "Severe"]:
 
                 message = f"""
-🌱 Groundnut Foliar Disease Forewarning
+🌱 TNAU Disease Prediction System
 
 District: {district}
 Disease: {disease}
 Crop Stage: {crop_stage}
-Forecast: {forecast}
 
 Predicted Severity: {percentage:.1f}%
 Severity Category: {category}
@@ -1080,31 +1408,29 @@ Severity Category: {category}
 Advisory:
 {advisory}
 
-- Groundnut Foliar Disease Forewarning System
+- TNAU Disease Prediction System
 """
-
-                encoded_message = urllib.parse.quote(
-                    message
-                )
-
+                encoded_message = urllib.parse.quote(message)
                 whatsapp_url = (
-                    f"https://wa.me/{phone}"
-                    f"?text={encoded_message}"
+                    f"https://wa.me/{phone}?text={encoded_message}"
                 )
 
                 st.markdown(
                     f"""
-                    <a href="{whatsapp_url}"
-                       target="_blank">
+                    <a href="{whatsapp_url}" target="_blank"
+                       style="text-decoration:none; display:block;">
                         <button style="
-                            background-color:#25D366;
+                            background:linear-gradient(135deg,#25D366,#128C7E);
                             color:white;
-                            padding:12px 22px;
+                            padding:14px 24px;
                             border:none;
-                            border-radius:8px;
-                            font-size:16px;
-                            font-weight:bold;
-                            cursor:pointer;">
+                            border-radius:12px;
+                            font-size:15px;
+                            font-weight:700;
+                            cursor:pointer;
+                            width:100%;
+                            box-shadow:0 6px 16px rgba(37,211,102,0.32);
+                            transition:transform 0.18s ease, box-shadow 0.18s ease;">
                             📲 Send WhatsApp Alert
                         </button>
                     </a>
@@ -1112,122 +1438,205 @@ Advisory:
                     unsafe_allow_html=True,
                 )
 
+    st.markdown(
+        """
+        <div class="app-footer">
+            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
+            Always validate field conditions with local agricultural officers.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 # ============================================================
-# DISEASE INFORMATION
+# DISEASE INFORMATION PAGE
 # ============================================================
 
 elif page == "Disease Information":
 
-    st.header("🌱 Disease Information")
+    render_header("Disease Information")
 
-    disease = st.selectbox(
-        "Select Disease",
-        ["Rust", "Late Leaf Spot"]
+    st.markdown(
+        """
+        <div class="hero" style="padding: 32px 28px;">
+            <h1 style="font-size:28px;">🌱 Disease Information</h1>
+            <p>Learn about the major foliar diseases of groundnut covered by this system.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
+    disease = st.selectbox("Select Disease", ["Rust", "Late Leaf Spot"])
 
     if disease == "Rust":
 
-        st.subheader("Groundnut Rust - Puccinia arachidis")
-
-        st.write("""
-        Rust is a fungal disease of groundnut that produces
-        rust-coloured pustules on leaves. Disease development
-        can increase under favourable humid and rainy conditions.
-        """)
+        st.markdown(
+            """
+            <div class="section-card">
+                <div class="section-title">Groundnut Rust — Puccinia arachidis</div>
+                <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
+                    Rust is a fungal disease of groundnut that produces
+                    rust-coloured pustules on leaves. Disease development
+                    can increase rapidly under favourable humid and rainy
+                    conditions, and severe infection may lead to significant
+                    defoliation and yield loss if not managed in time.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         st.image(
             "Rust.png",
             caption="Groundnut Rust Disease Symptoms",
-            use_container_width=True
+            use_container_width=True,
         )
 
-        st.markdown("### Symptoms")
-
-        st.markdown("""
-        - Rust-coloured or reddish-brown pustules
-        - Mainly visible on leaves
-        - Increased disease development under humid conditions
-        - Severe infection can damage foliage
-        """)
+        st.markdown(
+            """
+            <div class="section-card">
+                <div class="section-title">Symptoms</div>
+                <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
+                    <li>Rust-coloured or reddish-brown pustules on leaves</li>
+                    <li>Pustules mainly visible on the lower leaf surface</li>
+                    <li>Increased disease development under humid conditions</li>
+                    <li>Severe infection can damage foliage and reduce yield</li>
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     else:
 
-        st.subheader("Late Leaf Spot - Tikka Disease")
-
-        st.write("""
-        Late Leaf Spot produces circular dark lesions on
-        groundnut leaves and may cause premature defoliation
-        under severe disease pressure.
-        """)
+        st.markdown(
+            """
+            <div class="section-card">
+                <div class="section-title">Late Leaf Spot — Tikka Disease</div>
+                <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
+                    Late Leaf Spot produces circular dark lesions on
+                    groundnut leaves and may cause premature defoliation
+                    under severe disease pressure. It is one of the most
+                    destructive foliar diseases of groundnut and requires
+                    timely monitoring and management.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         st.image(
             "LLS.png",
             caption="Groundnut Late Leaf Spot Disease Symptoms",
-            use_container_width=True
+            use_container_width=True,
         )
 
-        st.markdown("### Symptoms")
+        st.markdown(
+            """
+            <div class="section-card">
+                <div class="section-title">Symptoms</div>
+                <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
+                    <li>Circular dark leaf spots with characteristic halos</li>
+                    <li>Lesions typically appear on older leaves first</li>
+                    <li>Progressive leaf damage as the disease advances</li>
+                    <li>Premature defoliation under severe infection</li>
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("""
-        - Circular dark leaf spots
-        - Lesions on older leaves
-        - Progressive leaf damage
-        - Premature defoliation under severe infection
-        """)
+    st.markdown(
+        """
+        <div class="app-footer">
+            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
+            Consult local agricultural officers for region-specific management practices.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ============================================================
-# ABOUT
+# ABOUT DEVELOPER PAGE
 # ============================================================
 
 elif page == "About Developer":
 
-    st.header("ℹ️ About the Developer")
-# ============================================================
-# ABOUT
-# ============================================================
+    render_header("About Developer")
 
-elif page == "About Developer":
-
-    st.header("ℹ️ About the Developer")
-
-    st.write(
+    st.markdown(
         """
-        **Developed by:** Kishor Kumar
-
-        **Project:** Groundnut Foliar Disease Forewarning System
-
-        **Year:** 2026
-        """
+        <div class="hero" style="padding: 32px 28px;">
+            <h1 style="font-size:28px;">ℹ️ About the Developer</h1>
+            <p>Meet the team behind the TNAU Disease Prediction System.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.markdown(
         """
-        ### Model approach
+        <div class="section-card">
+            <div class="section-title">Developer</div>
+            <p style="font-size:15px; line-height:1.8; color:var(--tnau-text); margin:0;">
+                <b style="color:var(--tnau-green-dark);">Developed by:</b> Kishor Kumar<br>
+                <b style="color:var(--tnau-green-dark);">Project:</b> TNAU Disease Prediction System —
+                Groundnut Foliar Disease Forewarning<br>
+                <b style="color:var(--tnau-green-dark);">Institution:</b> Tamil Nadu Agricultural University (TNAU)<br>
+                <b style="color:var(--tnau-green-dark);">Year:</b> 2026
+            </p>
+        </div>
 
-        The application uses fixed district-specific Multiple Linear
-        Regression equations developed from historical weather and
-        disease observations.
+        <div class="section-card">
+            <div class="section-title">About the System</div>
+            <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0;">
+                The TNAU Disease Prediction System is a farmer-friendly
+                decision-support tool that provides weather-based
+                forewarning for two major foliar diseases of groundnut —
+                <b>Rust</b> and <b>Late Leaf Spot</b>. By combining
+                district-specific knowledge with current weather
+                observations, the system delivers a clear severity
+                prediction and a practical farmer advisory that can
+                help guide timely field-level decisions.
+            </p>
+        </div>
 
-        The production application does not retrain the MLR model
-        when a farmer enters weather data.
-        """
+        <div class="section-card">
+            <div class="section-title">Farmer-Facing Output</div>
+            <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0 0 10px 0;">
+                The prediction page presents the following information in a
+                clean, easy-to-understand format:
+            </p>
+            <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
+                <li>Predicted Severity (%)</li>
+                <li>Severity Category (Very Low / Low / Moderate / High / Severe)</li>
+                <li>Favourable Weather Conditions</li>
+                <li>Farmer Advisory</li>
+            </ul>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">Coverage</div>
+            <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0;">
+                The current version of the system covers the
+                <b>Aliyarnagar</b> and <b>Vridhachalam</b> districts for
+                both <b>Rust</b> and <b>Late Leaf Spot</b> diseases.
+                Additional districts and diseases can be incorporated as
+                further validated data become available.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.markdown(
         """
-        ### Farmer-facing output
-
-        The prediction page displays:
-
-        - Predicted Severity (%)
-        - Severity Category
-        - Farmer Advisory
-        """
-    )
-
-    st.caption(
-        "Current fixed-equation models in this version: "
-        "Aliyarnagar and Vridhachalam for Rust and Late Leaf Spot."
+        <div class="app-footer">
+            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
+            Tamil Nadu Agricultural University &nbsp;·&nbsp; 2026
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
