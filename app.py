@@ -836,6 +836,44 @@ def predict_7day(district, disease, x1, x2, x3, x4, x5, rainfall):
 
 
 # ============================================================
+# CROP STAGES
+# ============================================================
+
+CROP_STAGES = [
+    "Germination & Emergence",
+    "Vegetative Growth",
+    "Flowering",
+    "Pegging",
+    "Pod & Seed Filling",
+    "Maturity & Harvest",
+]
+
+STAGE_DESCRIPTION = {
+    "Germination & Emergence":
+        "0–20 days: crop establishment and emergence.",
+    "Vegetative Growth":
+        "20–35 days: leaf and canopy development.",
+    "Flowering":
+        "30–40 days: flowering stage.",
+    "Pegging":
+        "35–60 days: pegging stage; disease monitoring becomes important.",
+    "Pod & Seed Filling":
+        "60–100 days: pod development and seed filling.",
+    "Maturity & Harvest":
+        "100–120+ days: maturity and harvesting period.",
+}
+
+# Weather-based foliar disease forewarning is activated
+# from flowering onwards in this application.
+ACTIVE_STAGES = {
+    "Flowering",
+    "Pegging",
+    "Pod & Seed Filling",
+    "Maturity & Harvest",
+}
+
+
+# ============================================================
 # SEVERITY CONVERSION
 # ============================================================
 
