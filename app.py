@@ -73,6 +73,7 @@ CUSTOM_CSS = """
     --tnau-text-dark:     #16311c;
     --tnau-text:          #2f4a36;
     --tnau-text-muted:    #5f6b63;
+    --tnau-text-readable: #2d3a30;  /* readable dark for sidebar radio labels */
     --tnau-white:         #ffffff;
     --tnau-bg:            #f8fbf8;
     --tnau-shadow:        0 6px 22px rgba(27, 94, 32, 0.08);
@@ -163,6 +164,19 @@ html, body, [data-testid="stAppViewContainer"] {
     box-shadow: 0 18px 40px rgba(15, 61, 31, 0.25);
     animation: fadeIn 0.7s ease-out;
 }
+/* Decorative floating leaves inside hero */
+.hero .leaf {
+    position: absolute;
+    font-size: 28px;
+    opacity: 0.18;
+    animation: floatLeaf 9s linear infinite;
+    pointer-events: none;
+}
+.hero .leaf.l1 { top: 18%; left: 8%;  animation-duration: 11s; }
+.hero .leaf.l2 { top: 28%; right: 10%; animation-duration: 13s; animation-delay: -3s; font-size: 22px; }
+.hero .leaf.l3 { bottom: 22%; left: 14%; animation-duration: 10s; animation-delay: -5s; font-size: 24px; }
+.hero .leaf.l4 { bottom: 18%; right: 16%; animation-duration: 12s; animation-delay: -2s; font-size: 26px; }
+.hero .leaf.l5 { top: 50%; left: 50%; animation-duration: 14s; animation-delay: -7s; font-size: 20px; }
 .hero::after {
     content: "";
     position: absolute;
@@ -175,14 +189,20 @@ html, body, [data-testid="stAppViewContainer"] {
     font-weight: 800;
     margin: 0 0 10px 0;
     letter-spacing: 0.3px;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    color: #ffffff;
+    text-shadow: 0 2px 14px rgba(0,0,0,0.35), 0 0 1px rgba(255,255,255,0.4);
+    position: relative;
+    z-index: 2;
 }
 .hero p {
     font-size: 17px;
     margin: 0;
-    color: #e8f5e9;
+    color: #ffffff;
     font-weight: 400;
-    opacity: 0.96;
+    opacity: 0.98;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.25);
 }
 .hero .hero-chips {
     margin-top: 22px;
@@ -190,15 +210,31 @@ html, body, [data-testid="stAppViewContainer"] {
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
 }
 .hero .hero-chip {
-    background: rgba(255,255,255,0.14);
-    border: 1px solid rgba(255,255,255,0.28);
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
     padding: 7px 16px;
     border-radius: 999px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
+    color: #ffffff;
     backdrop-filter: blur(4px);
+    transition: transform 0.25s ease, background 0.25s ease;
+}
+.hero .hero-chip:hover {
+    transform: translateY(-2px) scale(1.05);
+    background: rgba(255,255,255,0.28);
+}
+.hero .hero-icon {
+    font-size: 56px;
+    margin-bottom: 8px;
+    display: inline-block;
+    animation: bounce 2.6s ease-in-out infinite;
+    position: relative;
+    z-index: 2;
 }
 
 /* ----------  Cards / sections  ---------- */
@@ -402,26 +438,42 @@ section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #ffffff 0%, var(--tnau-green-tint) 100%);
     border-right: 1px solid var(--tnau-green-border);
 }
+/* CRITICAL FIX: sidebar radio label text must be dark and readable */
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label,
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label span,
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label p,
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label div {
+    color: var(--tnau-text-readable) !important;
+    font-weight: 600 !important;
+}
 section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label {
     border-radius: 10px;
     margin: 4px 0;
     transition: all 0.18s ease;
+    padding: 10px 14px !important;
+    border: 1px solid var(--tnau-green-border) !important;
+    background: #ffffff;
 }
 section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label:hover {
     background: var(--tnau-green-bg);
+    border-color: var(--tnau-green-light) !important;
+    transform: translateX(2px);
 }
 section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] {
-    background: linear-gradient(135deg, var(--tnau-green) 0%, var(--tnau-green-dark) 100%);
-    color: #ffffff;
-    border-color: var(--tnau-green-dark);
+    background: linear-gradient(135deg, var(--tnau-green) 0%, var(--tnau-green-dark) 100%) !important;
+    border-color: var(--tnau-green-dark) !important;
     box-shadow: 0 4px 12px rgba(27, 94, 32, 0.22);
 }
-section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] span {
-    color: #ffffff;
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] span,
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] p,
+section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] div {
+    color: #ffffff !important;
 }
 
 /* ----------  Streamlit native element tweaks  ---------- */
-h1, h2, h3, h4 { color: var(--tnau-green-dark) !important; }
+h1, h2, h3, h4 { color: var(--tnau-green-dark); }
+/* Hero h1 must stay white despite the global h1 color rule above */
+.hero h1 { color: #ffffff !important; }
 h2 { border-bottom: 2px solid var(--tnau-green-border); padding-bottom: 8px; }
 .stAlert { border-radius: 12px !important; }
 .stAlert > div { border-radius: 12px !important; }
@@ -446,6 +498,118 @@ hr { border-color: var(--tnau-green-border) !important; }
 @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeInDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes popIn      { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+@keyframes bounce     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes floatLeaf  {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 0.18; }
+    25%  { transform: translate(15px, -12px) rotate(8deg); opacity: 0.28; }
+    50%  { transform: translate(8px, -22px) rotate(-6deg); opacity: 0.22; }
+    75%  { transform: translate(-10px, -8px) rotate(4deg); opacity: 0.28; }
+    100% { transform: translate(0, 0) rotate(0deg); opacity: 0.18; }
+}
+@keyframes pulse      { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } }
+@keyframes sway       { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes grow       { 0% { transform: scaleY(0.6); opacity: 0.6; } 100% { transform: scaleY(1); opacity: 1; } }
+@keyframes spinSlow   { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes shimmer    { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes raindrop   {
+    0%   { transform: translateY(-20px); opacity: 0; }
+    20%  { opacity: 0.7; }
+    100% { transform: translateY(40px); opacity: 0; }
+}
+@keyframes glow       {
+    0%,100% { box-shadow: 0 0 12px rgba(67, 160, 71, 0.3); }
+    50%     { box-shadow: 0 0 24px rgba(67, 160, 71, 0.6); }
+}
+
+/* Pulsing live indicator dot */
+.live-dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--tnau-green-light); border-radius: 50%;
+    animation: pulse 1.6s ease-in-out infinite;
+    margin-right: 6px; vertical-align: middle;
+}
+
+/* Animated weather icon container */
+.weather-anim {
+    position: relative; display: inline-block;
+    font-size: 38px; animation: bounce 3s ease-in-out infinite;
+}
+
+/* SVG plant grow animation */
+.plant-grow-svg {
+    display: block; margin: 0 auto;
+    animation: sway 4s ease-in-out infinite;
+    transform-origin: bottom center;
+}
+.plant-grow-svg .leaf-shape {
+    transform-origin: bottom center;
+    animation: grow 1.4s ease-out;
+}
+
+/* Shimmer effect for the predict button */
+.stButton > button::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 3.5s linear infinite;
+    border-radius: inherit; pointer-events: none;
+}
+.stButton > button { position: relative; overflow: hidden; }
+
+/* Live gauge glow */
+.gauge-wrap {
+    animation: glow 3s ease-in-out infinite;
+    border-radius: 16px;
+}
+
+/* Falling raindrops animation */
+.rain-container {
+    position: relative; display: inline-block;
+    width: 64px; height: 36px; vertical-align: middle;
+    overflow: hidden;
+}
+.rain-container .rain-cloud {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    font-size: 26px; line-height: 1;
+}
+.rain-drop {
+    position: absolute; top: 22px; width: 2px; height: 10px;
+    background: linear-gradient(180deg, transparent, #4fc3f7);
+    border-radius: 0 0 4px 4px;
+    animation: raindrop 1.4s linear infinite;
+}
+.rain-drop.d1 { left: 14px; animation-delay: 0s; }
+.rain-drop.d2 { left: 26px; animation-delay: 0.35s; }
+.rain-drop.d3 { left: 38px; animation-delay: 0.7s; }
+.rain-drop.d4 { left: 50px; animation-delay: 1.05s; }
+@keyframes raindrop {
+    0%   { transform: translateY(-4px); opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(14px); opacity: 0; }
+}
+
+/* Stats badge with subtle pulse */
+.stat-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--tnau-green-bg); color: var(--tnau-green-dark);
+    padding: 6px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    border: 1px solid var(--tnau-green-border);
+}
+
+/* Disease-scanner sweep animation */
+.scanner-line {
+    position: absolute; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--tnau-green-light), transparent);
+    animation: scanSweep 2.2s ease-in-out infinite;
+}
+@keyframes scanSweep {
+    0%   { top: 0; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
 
 /* ----------  Responsive  ---------- */
 @media (max-width: 768px) {
@@ -935,7 +1099,13 @@ if page == "Home":
     st.markdown(
         """
         <div class="hero">
-            <h1>🌱 TNAU Disease Prediction System</h1>
+            <span class="leaf l1">🍃</span>
+            <span class="leaf l2">🌿</span>
+            <span class="leaf l3">🌱</span>
+            <span class="leaf l4">🍃</span>
+            <span class="leaf l5">🌿</span>
+            <div class="hero-icon">🌱</div>
+            <h1>TNAU Disease Prediction System</h1>
             <p>
                 Weather-based forewarning for Groundnut Rust and Late Leaf Spot —
                 empowering farmers with timely, actionable disease advisories.
@@ -950,6 +1120,27 @@ if page == "Home":
         """,
         unsafe_allow_html=True,
     )
+
+    # ---- Animated stats banner ----
+    s1, s2, s3, s4 = st.columns(4)
+    stats = [
+        (s1, "🌱", "2", "Diseases Covered"),
+        (s2, "📍", "2", "Districts Supported"),
+        (s3, "🌦️", "5", "Weather Parameters"),
+        (s4, "🌾", "6", "Crop Stages Tracked"),
+    ]
+    for col, icon, value, label in stats:
+        with col:
+            st.markdown(
+                f"""
+                <div class="section-card" style="text-align:center; padding:18px 12px; margin:8px 0;">
+                    <div style="font-size:30px; margin-bottom:4px;">{icon}</div>
+                    <div style="font-size:28px; font-weight:800; color:var(--tnau-green-dark); line-height:1;">{value}</div>
+                    <div style="font-size:12px; color:var(--tnau-text-muted); margin-top:4px; font-weight:600;">{label}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     st.markdown("### About the System")
 
@@ -985,7 +1176,7 @@ if page == "Home":
         st.markdown(
             """
             <div class="feature-card">
-                <div class="feature-icon">📊</div>
+                <div class="feature-icon" style="animation: pulse 2.5s ease-in-out infinite;">📊</div>
                 <h3>Predicted Severity</h3>
                 <p>A clear percentage and category that tells you how strong the disease pressure is expected to be.</p>
             </div>
@@ -996,7 +1187,7 @@ if page == "Home":
         st.markdown(
             """
             <div class="feature-card">
-                <div class="feature-icon">🌦️</div>
+                <div class="feature-icon" style="animation: bounce 3s ease-in-out infinite; animation-delay: 0.3s;">🌦️</div>
                 <h3>Weather Favourability</h3>
                 <p>See which current weather conditions are conducive to disease development in your field.</p>
             </div>
@@ -1007,7 +1198,7 @@ if page == "Home":
         st.markdown(
             """
             <div class="feature-card">
-                <div class="feature-icon">👨‍🌾</div>
+                <div class="feature-icon" style="animation: sway 3.5s ease-in-out infinite; animation-delay: 0.6s;">👨‍🌾</div>
                 <h3>Farmer Advisory</h3>
                 <p>Receive a practical, locally-relevant recommendation on monitoring and disease management.</p>
             </div>
@@ -1065,7 +1256,11 @@ elif page == "Disease Prediction":
     st.markdown(
         """
         <div class="hero" style="padding: 32px 28px;">
-            <h1 style="font-size:28px;">🔮 Disease Prediction</h1>
+            <span class="leaf l1">🍃</span>
+            <span class="leaf l2">🌿</span>
+            <span class="leaf l4">🌱</span>
+            <div class="hero-icon" style="font-size:42px;">🔮</div>
+            <h1 style="font-size:28px;">Disease Prediction</h1>
             <p>Enter your field conditions and click <b>Predict Disease</b> to receive an instant forecast.</p>
         </div>
         """,
@@ -1142,7 +1337,14 @@ elif page == "Disease Prediction":
         """
         <div class="section-card">
             <div class="section-title">🌦️ Weather Parameters</div>
-            <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:14px;">
+            <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+                <span class="rain-container">
+                    <span class="rain-cloud">☁️</span>
+                    <span class="rain-drop d1"></span>
+                    <span class="rain-drop d2"></span>
+                    <span class="rain-drop d3"></span>
+                    <span class="rain-drop d4"></span>
+                </span>
                 Enter the current weather values observed in your field.
             </div>
         """,
@@ -1218,6 +1420,25 @@ elif page == "Disease Prediction":
     if predict_clicked:
 
         # --------------------------------------------
+        # LIVE PREDICTION INDICATOR  (animated)
+        # --------------------------------------------
+        st.markdown(
+            """
+            <div class="section-card" style="text-align:center; padding:20px; position:relative; overflow:hidden;">
+                <div style="display:inline-flex; align-items:center; gap:10px; font-size:15px; font-weight:700; color:var(--tnau-green-dark);">
+                    <span class="live-dot"></span>
+                    ANALYSING FIELD CONDITIONS
+                </div>
+                <div style="margin-top:6px; font-size:12px; color:var(--tnau-text-muted);">
+                    Combining weather data with district-specific disease knowledge…
+                </div>
+                <div class="scanner-line"></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # --------------------------------------------
         # CROP-STAGE FILTER
         # --------------------------------------------
         if crop_stage not in ACTIVE_STAGES:
@@ -1271,6 +1492,10 @@ elif page == "Disease Prediction":
             st.markdown(
                 f"""
                 <div class="result-card">
+                    <div style="display:inline-flex; align-items:center; gap:8px; padding:4px 12px; background:var(--tnau-green-bg); border-radius:999px; margin-bottom:8px;">
+                        <span class="live-dot"></span>
+                        <span style="font-size:11px; font-weight:700; color:var(--tnau-green-dark); letter-spacing:0.6px;">PREDICTION COMPLETE</span>
+                    </div>
                     <div class="result-label">Predicted Severity</div>
                     <div class="severity-number" style="color:{color};">
                         {percentage:.1f}%
@@ -1330,6 +1555,15 @@ elif page == "Disease Prediction":
                 """,
                 unsafe_allow_html=True,
             )
+
+            gauge_html = f"""
+            <div class="gauge-wrap" style="padding:6px;">
+              <div style="text-align:center; font-size:13px; color:var(--tnau-text-muted); margin-bottom:6px;">
+                Live severity reading from the prediction engine
+              </div>
+            </div>
+            """
+            st.markdown(gauge_html, unsafe_allow_html=True)
 
             fig = go.Figure(
                 go.Indicator(
@@ -1460,7 +1694,11 @@ elif page == "Disease Information":
     st.markdown(
         """
         <div class="hero" style="padding: 32px 28px;">
-            <h1 style="font-size:28px;">🌱 Disease Information</h1>
+            <span class="leaf l1">🍃</span>
+            <span class="leaf l3">🌱</span>
+            <span class="leaf l4">🌿</span>
+            <div class="hero-icon" style="font-size:42px;">🌱</div>
+            <h1 style="font-size:28px;">Disease Information</h1>
             <p>Learn about the major foliar diseases of groundnut covered by this system.</p>
         </div>
         """,
@@ -1569,7 +1807,10 @@ elif page == "About Developer":
     st.markdown(
         """
         <div class="hero" style="padding: 32px 28px;">
-            <h1 style="font-size:28px;">ℹ️ About the Developer</h1>
+            <span class="leaf l2">🌿</span>
+            <span class="leaf l4">🍃</span>
+            <div class="hero-icon" style="font-size:42px;">ℹ️</div>
+            <h1 style="font-size:28px;">About the Developer</h1>
             <p>Meet the team behind the TNAU Disease Prediction System.</p>
         </div>
         """,
