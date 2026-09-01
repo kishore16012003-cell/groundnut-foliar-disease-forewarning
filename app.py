@@ -646,13 +646,353 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # ============================================================
-# TNAU HEADER  —  logo + title bar shown on every page
+# EXTRA STYLES  —  centred header title + Tamil font support
+# ============================================================
+
+EXTRA_CSS = """
+<style>
+/* Centre the TNAU title block inside the header bar */
+.tnau-header .tnau-title-wrap { text-align: center; }
+.tnau-header .tnau-title,
+.tnau-header .tnau-subtitle { text-align: center; }
+
+/* Tamil-capable font stack */
+html, body, [data-testid="stAppViewContainer"],
+.stMarkdown, .stButton button, .stRadio, .stSelectbox, label, p, div, span, h1, h2, h3, li {
+    font-family: 'Segoe UI', 'Noto Sans Tamil', 'Latha', 'Nirmala UI',
+                 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+}
+
+/* Language switch block in the sidebar */
+.lang-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--tnau-green-dark);
+    margin: 2px 0 6px 2px;
+}
+section[data-testid="stSidebar"] .stButton button {
+    width: 100%;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 4px;
+}
+</style>
+"""
+st.markdown(EXTRA_CSS, unsafe_allow_html=True)
+
+
+# ============================================================
+# LANGUAGE  —  English / Tamil switch
+# ============================================================
+
+if "lang" not in st.session_state:
+    st.session_state["lang"] = "en"
+
+
+def t(key: str) -> str:
+    """Return the text for `key` in the currently selected language."""
+    entry = TXT.get(key)
+    if entry is None:
+        return key
+    return entry.get(st.session_state.get("lang", "en"), entry.get("en", key))
+
+
+def tv(mapping: dict, value: str) -> str:
+    """Translate a fixed option value (district / disease / stage / category)."""
+    entry = mapping.get(value)
+    if entry is None:
+        return value
+    return entry.get(st.session_state.get("lang", "en"), value)
+
+
+# ------------------------------------------------------------
+# Option labels (internal values stay English for the model)
+# ------------------------------------------------------------
+
+DISTRICT_LABEL = {
+    "Aliyarnagar":  {"en": "Aliyarnagar",  "ta": "ஆலியார்நகர்"},
+    "Vridhachalam": {"en": "Vridhachalam", "ta": "விருத்தாசலம்"},
+}
+
+DISEASE_LABEL = {
+    "Rust":           {"en": "Rust",           "ta": "துரு நோய்"},
+    "Late Leaf Spot": {"en": "Late Leaf Spot", "ta": "பிந்திய இலைப்புள்ளி நோய்"},
+}
+
+STAGE_LABEL = {
+    "Germination & Emergence": {"en": "Germination & Emergence", "ta": "முளைப்பு மற்றும் தோன்றுதல்"},
+    "Vegetative Growth":       {"en": "Vegetative Growth",       "ta": "தாவர வளர்ச்சி"},
+    "Flowering":               {"en": "Flowering",               "ta": "பூக்கும் நிலை"},
+    "Pegging":                 {"en": "Pegging",                 "ta": "ஊசி இறங்கும் நிலை"},
+    "Pod & Seed Filling":      {"en": "Pod & Seed Filling",      "ta": "காய் மற்றும் விதை நிரம்பும் நிலை"},
+    "Maturity & Harvest":      {"en": "Maturity & Harvest",      "ta": "முதிர்ச்சி மற்றும் அறுவடை"},
+}
+
+STAGE_DESC_L = {
+    "Germination & Emergence": {
+        "en": "0–20 days: crop establishment and emergence.",
+        "ta": "0–20 நாட்கள்: பயிர் நிலைபெறுதல் மற்றும் முளைத்து வெளிவருதல்.",
+    },
+    "Vegetative Growth": {
+        "en": "20–35 days: leaf and canopy development.",
+        "ta": "20–35 நாட்கள்: இலை மற்றும் பசுங்கூரை வளர்ச்சி.",
+    },
+    "Flowering": {
+        "en": "30–40 days: flowering stage.",
+        "ta": "30–40 நாட்கள்: பூக்கும் நிலை.",
+    },
+    "Pegging": {
+        "en": "35–60 days: pegging stage; disease monitoring becomes important.",
+        "ta": "35–60 நாட்கள்: ஊசி இறங்கும் நிலை; நோய் கண்காணிப்பு முக்கியமாகிறது.",
+    },
+    "Pod & Seed Filling": {
+        "en": "60–100 days: pod development and seed filling.",
+        "ta": "60–100 நாட்கள்: காய் உருவாதல் மற்றும் விதை நிரம்புதல்.",
+    },
+    "Maturity & Harvest": {
+        "en": "100–120+ days: maturity and harvesting period.",
+        "ta": "100–120+ நாட்கள்: முதிர்ச்சி மற்றும் அறுவடைக் காலம்.",
+    },
+}
+
+CATEGORY_LABEL = {
+    "Very Low": {"en": "Very Low", "ta": "மிகக் குறைவு"},
+    "Low":      {"en": "Low",      "ta": "குறைவு"},
+    "Moderate": {"en": "Moderate", "ta": "மிதமானது"},
+    "High":     {"en": "High",     "ta": "அதிகம்"},
+    "Severe":   {"en": "Severe",   "ta": "மிகக் கடுமையானது"},
+}
+
+PAGE_LABEL = {
+    "Home":                {"en": "Home",                "ta": "முகப்பு"},
+    "Disease Prediction":  {"en": "Disease Prediction",  "ta": "நோய் முன்னறிவிப்பு"},
+    "Disease Information": {"en": "Disease Information", "ta": "நோய் தகவல்"},
+    "About Developer":     {"en": "About Developer",     "ta": "உருவாக்கியவர் பற்றி"},
+}
+
+
+# ------------------------------------------------------------
+# All interface text  (English / Tamil)
+# ------------------------------------------------------------
+
+TXT = {
+    # ---- header ----
+    "app_title":     {"en": "TNAU Disease Prediction System",
+                      "ta": "தமிழ்நாடு வேளாண் பல்கலைக்கழக நோய் முன்னறிவிப்பு அமைப்பு"},
+    "app_sub_1":     {"en": "Tamil Nadu Agricultural University",
+                      "ta": "தமிழ்நாடு வேளாண் பல்கலைக்கழகம்"},
+    "app_sub_2":     {"en": "Groundnut Foliar Disease Forewarning",
+                      "ta": "நிலக்கடலை இலை நோய் முன்னெச்சரிக்கை"},
+
+    # ---- sidebar ----
+    "language":      {"en": "Language", "ta": "மொழி"},
+    "nav":           {"en": "Navigation", "ta": "வழிசெலுத்தல்"},
+    "nav_sub":       {"en": "TNAU Disease Prediction System",
+                      "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பு"},
+    "sidebar_foot":  {"en": "TNAU · 2026", "ta": "TNAU · 2026"},
+
+    # ---- home hero ----
+    "home_hero_p":   {"en": "Weather-based forewarning for Groundnut Rust and Late Leaf Spot — empowering farmers with timely, actionable disease advisories.",
+                      "ta": "நிலக்கடலை துரு மற்றும் பிந்திய இலைப்புள்ளி நோய்களுக்கான வானிலை அடிப்படையிலான முன்னெச்சரிக்கை — விவசாயிகளுக்கு சரியான நேரத்தில் செயல்படக்கூடிய நோய் ஆலோசனைகள்."},
+    "chip_crop":     {"en": "Groundnut", "ta": "நிலக்கடலை"},
+    "chip_weather":  {"en": "Weather-Driven", "ta": "வானிலை அடிப்படையிலானது"},
+    "chip_district": {"en": "District-Specific", "ta": "மாவட்ட வாரியானது"},
+    "chip_farmer":   {"en": "Farmer-Friendly", "ta": "விவசாயி நட்பு"},
+
+    # ---- home stats ----
+    "stat_diseases": {"en": "Diseases Covered", "ta": "உள்ளடக்கிய நோய்கள்"},
+    "stat_district": {"en": "Districts Supported", "ta": "ஆதரிக்கப்படும் மாவட்டங்கள்"},
+    "stat_weather":  {"en": "Weather Parameters", "ta": "வானிலை அளவுருக்கள்"},
+    "stat_stages":   {"en": "Crop Stages Tracked", "ta": "கண்காணிக்கப்படும் பயிர் நிலைகள்"},
+
+    # ---- home about ----
+    "home_about_h":  {"en": "About the System", "ta": "அமைப்பு பற்றி"},
+    "home_about_p1": {"en": "This system provides <b>weather-based forewarning</b> for two major foliar diseases of groundnut — <b>Rust</b> and <b>Late Leaf Spot</b>. By combining current weather parameters with district-specific knowledge, the application delivers a clear severity prediction and a practical farmer advisory that can help guide field-level decisions.",
+                      "ta": "இந்த அமைப்பு நிலக்கடலையின் இரண்டு முக்கிய இலை நோய்களுக்கு — <b>துரு</b> மற்றும் <b>பிந்திய இலைப்புள்ளி</b> — <b>வானிலை அடிப்படையிலான முன்னெச்சரிக்கையை</b> வழங்குகிறது. தற்போதைய வானிலை அளவுருக்களை மாவட்ட வாரியான அறிவுடன் இணைத்து, தெளிவான தீவிர அளவு முன்னறிவிப்பையும், வயல் அளவிலான முடிவுகளுக்கு உதவும் நடைமுறை ஆலோசனையையும் வழங்குகிறது."},
+    "home_about_p2": {"en": "The interface is intentionally simple: select your district, choose the disease of interest, indicate the current crop stage, enter the local weather values, and click <b>Predict Disease</b>. The system responds with the predicted severity, an easy-to-read category, and a recommended course of action.",
+                      "ta": "இடைமுகம் வேண்டுமென்றே எளிமையாக வைக்கப்பட்டுள்ளது: உங்கள் மாவட்டத்தைத் தேர்ந்தெடுக்கவும், நோயைத் தேர்வு செய்யவும், தற்போதைய பயிர் நிலையைக் குறிப்பிடவும், உள்ளூர் வானிலை மதிப்புகளை உள்ளிடவும், பின்னர் <b>நோயை முன்னறிவி</b> என்பதை அழுத்தவும். அமைப்பு முன்னறிவிக்கப்பட்ட தீவிர அளவு, எளிதில் புரியும் வகைப்பாடு மற்றும் பரிந்துரைக்கப்பட்ட நடவடிக்கையை வழங்கும்."},
+
+    # ---- home features ----
+    "home_get_h":    {"en": "What You Get", "ta": "நீங்கள் பெறுவது"},
+    "feat1_h":       {"en": "Predicted Severity", "ta": "முன்னறிவிக்கப்பட்ட தீவிரம்"},
+    "feat1_p":       {"en": "A clear percentage and category that tells you how strong the disease pressure is expected to be.",
+                      "ta": "நோய் அழுத்தம் எவ்வளவு வலுவாக இருக்கும் என்பதைக் கூறும் தெளிவான சதவீதமும் வகைப்பாடும்."},
+    "feat2_h":       {"en": "Weather Favourability", "ta": "வானிலை சாதகத்தன்மை"},
+    "feat2_p":       {"en": "See which current weather conditions are conducive to disease development in your field.",
+                      "ta": "உங்கள் வயலில் நோய் பரவலுக்கு எந்த வானிலை நிலைமைகள் சாதகமாக உள்ளன என்பதைப் பாருங்கள்."},
+    "feat3_h":       {"en": "Farmer Advisory", "ta": "விவசாயி ஆலோசனை"},
+    "feat3_p":       {"en": "Receive a practical, locally-relevant recommendation on monitoring and disease management.",
+                      "ta": "கண்காணிப்பு மற்றும் நோய் மேலாண்மை குறித்த நடைமுறைக்கு ஏற்ற உள்ளூர் பரிந்துரையைப் பெறுங்கள்."},
+
+    # ---- home quick start ----
+    "home_qs_h":     {"en": "Quick Start", "ta": "விரைவுத் தொடக்கம்"},
+    "home_qs_title": {"en": "Three Simple Steps", "ta": "மூன்று எளிய படிகள்"},
+    "step":          {"en": "STEP", "ta": "படி"},
+    "step1_h":       {"en": "Select District & Disease", "ta": "மாவட்டம் மற்றும் நோயைத் தேர்ந்தெடுக்கவும்"},
+    "step1_p":       {"en": "Choose your location and the disease you want to assess.",
+                      "ta": "உங்கள் இடத்தையும், நீங்கள் மதிப்பிட விரும்பும் நோயையும் தேர்வு செய்யுங்கள்."},
+    "step2_h":       {"en": "Enter Crop Stage & Weather", "ta": "பயிர் நிலை மற்றும் வானிலையை உள்ளிடவும்"},
+    "step2_p":       {"en": "Pick the current growth stage and fill in the local weather values.",
+                      "ta": "தற்போதைய வளர்ச்சி நிலையைத் தேர்வு செய்து, உள்ளூர் வானிலை மதிப்புகளை நிரப்புங்கள்."},
+    "step3_h":       {"en": "Click Predict Disease", "ta": "நோயை முன்னறிவி என்பதை அழுத்தவும்"},
+    "step3_p":       {"en": "Get your severity prediction, weather favourability, and advisory.",
+                      "ta": "தீவிர அளவு முன்னறிவிப்பு, வானிலை சாதகத்தன்மை மற்றும் ஆலோசனையைப் பெறுங்கள்."},
+
+    # ---- footers ----
+    "foot_uni":      {"en": "Tamil Nadu Agricultural University · 2026",
+                      "ta": "தமிழ்நாடு வேளாண் பல்கலைக்கழகம் · 2026"},
+    "foot_validate": {"en": "Always validate field conditions with local agricultural officers.",
+                      "ta": "வயல் நிலைமைகளை எப்போதும் உள்ளூர் வேளாண் அலுவலர்களிடம் உறுதிப்படுத்திக் கொள்ளவும்."},
+    "foot_consult":  {"en": "Consult local agricultural officers for region-specific management practices.",
+                      "ta": "பகுதிக்கேற்ற மேலாண்மை நடைமுறைகளுக்கு உள்ளூர் வேளாண் அலுவலர்களை அணுகவும்."},
+
+    # ---- prediction page ----
+    "pred_hero_p":   {"en": "Enter your field conditions and click <b>Predict Disease</b> to receive an instant forecast.",
+                      "ta": "உங்கள் வயல் நிலைமைகளை உள்ளிட்டு <b>நோயை முன்னறிவி</b> என்பதை அழுத்தி உடனடி முன்னறிவிப்பைப் பெறுங்கள்."},
+    "sec_location":  {"en": "Location & Disease", "ta": "இடம் மற்றும் நோய்"},
+    "sel_district":  {"en": "Select District", "ta": "மாவட்டத்தைத் தேர்ந்தெடுக்கவும்"},
+    "sel_disease":   {"en": "Select Disease", "ta": "நோயைத் தேர்ந்தெடுக்கவும்"},
+    "sec_stage":     {"en": "Current Groundnut Crop Stage", "ta": "தற்போதைய நிலக்கடலை பயிர் நிலை"},
+    "stage_help":    {"en": "Choose the stage that best matches your field.",
+                      "ta": "உங்கள் வயலுக்கு மிகவும் பொருந்தும் நிலையைத் தேர்வு செய்யுங்கள்."},
+    "stage_sel":     {"en": "Selected crop stage:", "ta": "தேர்ந்தெடுக்கப்பட்ட பயிர் நிலை:"},
+    "stage_inactive":{"en": " ⚠️ Forewarning is active from the Flowering stage onwards.",
+                      "ta": " ⚠️ முன்னெச்சரிக்கை பூக்கும் நிலையிலிருந்து செயல்படும்."},
+    "stage_active":  {"en": " ✅ Forewarning is active at this stage.",
+                      "ta": " ✅ இந்த நிலையில் முன்னெச்சரிக்கை செயல்படுகிறது."},
+    "sec_weather":   {"en": "Weather Parameters", "ta": "வானிலை அளவுருக்கள்"},
+    "weather_help":  {"en": "Enter the current weather values observed in your field.",
+                      "ta": "உங்கள் வயலில் பதிவான தற்போதைய வானிலை மதிப்புகளை உள்ளிடவும்."},
+    "in_maxtemp":    {"en": "🌡️ Maximum Temperature (°C)", "ta": "🌡️ அதிகபட்ச வெப்பநிலை (°செ)"},
+    "in_mintemp":    {"en": "🌡️ Minimum Temperature (°C)", "ta": "🌡️ குறைந்தபட்ச வெப்பநிலை (°செ)"},
+    "in_rh_morn":    {"en": "💧 Morning Relative Humidity (%)", "ta": "💧 காலை ஒப்பு ஈரப்பதம் (%)"},
+    "in_rh_eve":     {"en": "💧 Evening Relative Humidity (%)", "ta": "💧 மாலை ஒப்பு ஈரப்பதம் (%)"},
+    "in_wind":       {"en": "💨 Wind Speed (km/h)", "ta": "💨 காற்றின் வேகம் (கிமீ/மணி)"},
+    "in_rain":       {"en": "🌧️ Rainfall (mm)", "ta": "🌧️ மழையளவு (மிமீ)"},
+    "in_phone":      {"en": "📱 Farmer WhatsApp Number (optional — used only to send an alert for High/Severe predictions)",
+                      "ta": "📱 விவசாயியின் வாட்ஸ்அப் எண் (விருப்பத்தேர்வு — அதிகம்/மிகக் கடுமையான முன்னறிவிப்புக்கு எச்சரிக்கை அனுப்ப மட்டுமே)"},
+    "btn_predict":   {"en": "🔍 PREDICT DISEASE", "ta": "🔍 நோயை முன்னறிவி"},
+
+    "analysing":     {"en": "ANALYSING FIELD CONDITIONS", "ta": "வயல் நிலைமைகள் ஆய்வு செய்யப்படுகின்றன"},
+    "analysing_sub": {"en": "Combining weather data with district-specific disease knowledge…",
+                      "ta": "வானிலைத் தரவு மாவட்ட வாரியான நோய் அறிவுடன் இணைக்கப்படுகிறது…"},
+
+    "notactive_lbl": {"en": "Forewarning Not Active", "ta": "முன்னெச்சரிக்கை செயலில் இல்லை"},
+    "notactive_h":   {"en": "Disease forewarning is not activated at this crop stage.",
+                      "ta": "இந்தப் பயிர் நிலையில் நோய் முன்னெச்சரிக்கை செயல்படுத்தப்படவில்லை."},
+    "notactive_p":   {"en": "Continue regular crop monitoring. Weather-based foliar disease forewarning becomes active from the <b>Flowering</b> stage onwards.",
+                      "ta": "வழக்கமான பயிர் கண்காணிப்பைத் தொடரவும். வானிலை அடிப்படையிலான இலை நோய் முன்னெச்சரிக்கை <b>பூக்கும்</b> நிலையிலிருந்து செயல்படும்."},
+
+    "pred_done":     {"en": "PREDICTION COMPLETE", "ta": "முன்னறிவிப்பு முடிந்தது"},
+    "res_severity":  {"en": "Predicted Severity", "ta": "முன்னறிவிக்கப்பட்ட தீவிரம்"},
+    "res_category":  {"en": "Severity Category", "ta": "தீவிர வகைப்பாடு"},
+    "lbl_district":  {"en": "District", "ta": "மாவட்டம்"},
+    "lbl_disease":   {"en": "Disease", "ta": "நோய்"},
+    "lbl_stage":     {"en": "Crop Stage", "ta": "பயிர் நிலை"},
+
+    "sec_fav":       {"en": "Favourable Weather Conditions", "ta": "சாதகமான வானிலை நிலைமைகள்"},
+    "fav_help":      {"en": "Conditions that favour disease development in your field right now.",
+                      "ta": "தற்போது உங்கள் வயலில் நோய் பரவலுக்கு சாதகமான நிலைமைகள்."},
+    "cond_rust_temp":{"en": "Temperature 25–30°C", "ta": "வெப்பநிலை 25–30°செ"},
+    "cond_rh85":     {"en": "Relative humidity >85%", "ta": "ஒப்பு ஈரப்பதம் >85%"},
+    "cond_rain":     {"en": "Rainfall / rainy conditions", "ta": "மழை / மழைச் சூழல்"},
+    "cond_lls_temp": {"en": "Temperature 20–30°C", "ta": "வெப்பநிலை 20–30°செ"},
+    "cond_rh90":     {"en": "Relative humidity >90%", "ta": "ஒப்பு ஈரப்பதம் >90%"},
+    "cond_wet":      {"en": "Rainfall / wet conditions", "ta": "மழை / ஈரமான சூழல்"},
+
+    "sec_gauge":     {"en": "Severity Gauge", "ta": "தீவிர அளவுகோல்"},
+    "gauge_live":    {"en": "Live severity reading from the prediction engine",
+                      "ta": "முன்னறிவிப்பு அமைப்பிலிருந்து நேரடி தீவிர அளவீடு"},
+    "sec_advisory":  {"en": "Farmer Advisory", "ta": "விவசாயி ஆலோசனை"},
+    "btn_whatsapp":  {"en": "📲 Send WhatsApp Alert", "ta": "📲 வாட்ஸ்அப் எச்சரிக்கை அனுப்பு"},
+
+    # ---- advisories ----
+    "adv_inactive":  {"en": "Disease forewarning is not activated at the selected crop stage. Continue regular crop monitoring.",
+                      "ta": "தேர்ந்தெடுக்கப்பட்ட பயிர் நிலையில் நோய் முன்னெச்சரிக்கை செயல்படுத்தப்படவில்லை. வழக்கமான பயிர் கண்காணிப்பைத் தொடரவும்."},
+    "adv_verylow":   {"en": "Disease pressure is very low. Continue regular field monitoring.",
+                      "ta": "நோய் அழுத்தம் மிகக் குறைவாக உள்ளது. வழக்கமான வயல் கண்காணிப்பைத் தொடரவும்."},
+    "adv_low":       {"en": "Low disease pressure is indicated. Monitor the crop regularly, especially older leaves.",
+                      "ta": "குறைந்த நோய் அழுத்தம் காணப்படுகிறது. குறிப்பாக பழைய இலைகளை வழக்கமாகக் கண்காணிக்கவும்."},
+    "adv_mod_fav":   {"en": "Moderate disease pressure is indicated and weather conditions are favourable. Increase field monitoring and follow locally recommended disease-management practices.",
+                      "ta": "மிதமான நோய் அழுத்தம் காணப்படுகிறது, வானிலையும் சாதகமாக உள்ளது. வயல் கண்காணிப்பை அதிகரித்து, உள்ளூரில் பரிந்துரைக்கப்பட்ட நோய் மேலாண்மை நடைமுறைகளைப் பின்பற்றவும்."},
+    "adv_mod":       {"en": "Moderate disease pressure is indicated. Continue close field monitoring.",
+                      "ta": "மிதமான நோய் அழுத்தம் காணப்படுகிறது. வயலை நெருக்கமாகக் கண்காணித்து வரவும்."},
+    "adv_high":      {"en": "High disease pressure is forecast. Inspect the crop closely and take timely disease-management action according to local agricultural recommendations and approved product labels.",
+                      "ta": "அதிக நோய் அழுத்தம் முன்னறிவிக்கப்பட்டுள்ளது. பயிரை நெருக்கமாக ஆய்வு செய்து, உள்ளூர் வேளாண் பரிந்துரைகள் மற்றும் அங்கீகரிக்கப்பட்ட மருந்து விவரங்களின்படி உரிய நேரத்தில் நோய் மேலாண்மை நடவடிக்கை எடுக்கவும்."},
+    "adv_severe":    {"en": "Severe disease pressure is forecast. Immediate field inspection and timely disease-management action are recommended according to local agricultural recommendations and approved product labels.",
+                      "ta": "மிகக் கடுமையான நோய் அழுத்தம் முன்னறிவிக்கப்பட்டுள்ளது. உடனடி வயல் ஆய்வும், உள்ளூர் வேளாண் பரிந்துரைகள் மற்றும் அங்கீகரிக்கப்பட்ட மருந்து விவரங்களின்படி உரிய நோய் மேலாண்மை நடவடிக்கையும் பரிந்துரைக்கப்படுகிறது."},
+
+    # ---- disease information page ----
+    "info_hero_p":   {"en": "Learn about the major foliar diseases of groundnut covered by this system.",
+                      "ta": "இந்த அமைப்பு உள்ளடக்கிய நிலக்கடலையின் முக்கிய இலை நோய்கள் பற்றி அறியுங்கள்."},
+    "rust_title":    {"en": "Groundnut Rust — Puccinia arachidis",
+                      "ta": "நிலக்கடலை துரு நோய் — Puccinia arachidis"},
+    "rust_p":        {"en": "Rust is a fungal disease of groundnut that produces rust-coloured pustules on leaves. Disease development can increase rapidly under favourable humid and rainy conditions, and severe infection may lead to significant defoliation and yield loss if not managed in time.",
+                      "ta": "துரு என்பது நிலக்கடலையின் பூஞ்சை நோய் ஆகும்; இது இலைகளில் துரு நிற கொப்புளங்களை உண்டாக்குகிறது. ஈரப்பதம் மற்றும் மழைச் சூழலில் நோய் வேகமாகப் பரவும்; உரிய நேரத்தில் கட்டுப்படுத்தாவிட்டால் அதிக இலை உதிர்வு மற்றும் மகசூல் இழப்பு ஏற்படலாம்."},
+    "rust_caption":  {"en": "Groundnut Rust Disease Symptoms", "ta": "நிலக்கடலை துரு நோய் அறிகுறிகள்"},
+    "sec_symptoms":  {"en": "Symptoms", "ta": "அறிகுறிகள்"},
+    "rust_s1":       {"en": "Rust-coloured or reddish-brown pustules on leaves",
+                      "ta": "இலைகளில் துரு நிற அல்லது சிவப்பு-பழுப்பு கொப்புளங்கள்"},
+    "rust_s2":       {"en": "Pustules mainly visible on the lower leaf surface",
+                      "ta": "கொப்புளங்கள் பெரும்பாலும் இலையின் அடிப்பகுதியில் காணப்படும்"},
+    "rust_s3":       {"en": "Increased disease development under humid conditions",
+                      "ta": "ஈரப்பதமான சூழலில் நோய் அதிகமாகப் பரவுதல்"},
+    "rust_s4":       {"en": "Severe infection can damage foliage and reduce yield",
+                      "ta": "கடுமையான தாக்குதல் இலைகளைச் சேதப்படுத்தி மகசூலைக் குறைக்கும்"},
+    "lls_title":     {"en": "Late Leaf Spot — Tikka Disease",
+                      "ta": "பிந்திய இலைப்புள்ளி — திக்கா நோய்"},
+    "lls_p":         {"en": "Late Leaf Spot produces circular dark lesions on groundnut leaves and may cause premature defoliation under severe disease pressure. It is one of the most destructive foliar diseases of groundnut and requires timely monitoring and management.",
+                      "ta": "பிந்திய இலைப்புள்ளி நோய் நிலக்கடலை இலைகளில் வட்ட வடிவ கரும்புள்ளிகளை உண்டாக்கி, கடுமையான தாக்குதலின்போது இலைகள் முன்கூட்டியே உதிர வழிவகுக்கும். இது நிலக்கடலையின் மிகவும் சேதம் விளைவிக்கும் இலை நோய்களில் ஒன்று; உரிய நேரக் கண்காணிப்பும் மேலாண்மையும் தேவை."},
+    "lls_caption":   {"en": "Groundnut Late Leaf Spot Disease Symptoms",
+                      "ta": "நிலக்கடலை பிந்திய இலைப்புள்ளி நோய் அறிகுறிகள்"},
+    "lls_s1":        {"en": "Circular dark leaf spots with characteristic halos",
+                      "ta": "வட்ட வடிவ கரும்புள்ளிகள், சுற்றி வளையம் போன்ற அமைப்புடன்"},
+    "lls_s2":        {"en": "Lesions typically appear on older leaves first",
+                      "ta": "புள்ளிகள் பொதுவாக முதலில் பழைய இலைகளில் தோன்றும்"},
+    "lls_s3":        {"en": "Progressive leaf damage as the disease advances",
+                      "ta": "நோய் முற்றும்போது இலைச் சேதம் படிப்படியாக அதிகரிக்கும்"},
+    "lls_s4":        {"en": "Premature defoliation under severe infection",
+                      "ta": "கடுமையான தாக்குதலின்போது இலைகள் முன்கூட்டியே உதிர்தல்"},
+
+    # ---- about developer page ----
+    "about_hero_p":  {"en": "Meet the team behind the TNAU Disease Prediction System.",
+                      "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பை உருவாக்கியவர்களைப் பற்றி அறியுங்கள்."},
+    "sec_developer": {"en": "Developer", "ta": "உருவாக்கியவர்"},
+    "lbl_devby":     {"en": "Developed by:", "ta": "உருவாக்கியவர்:"},
+    "val_devname":   {"en": "Kishor Kumar", "ta": "கிஷோர் குமார்"},
+    "lbl_project":   {"en": "Project:", "ta": "திட்டம்:"},
+    "val_project":   {"en": "TNAU Disease Prediction System — Groundnut Foliar Disease Forewarning",
+                      "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பு — நிலக்கடலை இலை நோய் முன்னெச்சரிக்கை"},
+    "lbl_inst":      {"en": "Institution:", "ta": "நிறுவனம்:"},
+    "val_inst":      {"en": "Tamil Nadu Agricultural University (TNAU)",
+                      "ta": "தமிழ்நாடு வேளாண் பல்கலைக்கழகம் (TNAU)"},
+    "lbl_year":      {"en": "Year:", "ta": "ஆண்டு:"},
+    "sec_aboutsys":  {"en": "About the System", "ta": "அமைப்பு பற்றி"},
+    "about_sys_p":   {"en": "The TNAU Disease Prediction System is a farmer-friendly decision-support tool that provides weather-based forewarning for two major foliar diseases of groundnut — <b>Rust</b> and <b>Late Leaf Spot</b>. By combining district-specific knowledge with current weather observations, the system delivers a clear severity prediction and a practical farmer advisory that can help guide timely field-level decisions.",
+                      "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பு என்பது விவசாயி நட்பு முடிவெடுக்கும் துணைக் கருவியாகும். இது நிலக்கடலையின் இரண்டு முக்கிய இலை நோய்களுக்கு — <b>துரு</b> மற்றும் <b>பிந்திய இலைப்புள்ளி</b> — வானிலை அடிப்படையிலான முன்னெச்சரிக்கை வழங்குகிறது. மாவட்ட வாரியான அறிவை தற்போதைய வானிலைப் பதிவுகளுடன் இணைத்து, தெளிவான தீவிர அளவு முன்னறிவிப்பையும் நடைமுறை ஆலோசனையையும் தருகிறது."},
+    "sec_output":    {"en": "Farmer-Facing Output", "ta": "விவசாயிக்கு வழங்கப்படும் தகவல்"},
+    "output_p":      {"en": "The prediction page presents the following information in a clean, easy-to-understand format:",
+                      "ta": "முன்னறிவிப்பு பக்கம் பின்வரும் தகவல்களை எளிதில் புரியும் வடிவில் வழங்குகிறது:"},
+    "out_1":         {"en": "Predicted Severity (%)", "ta": "முன்னறிவிக்கப்பட்ட தீவிரம் (%)"},
+    "out_2":         {"en": "Severity Category (Very Low / Low / Moderate / High / Severe)",
+                      "ta": "தீவிர வகைப்பாடு (மிகக் குறைவு / குறைவு / மிதமானது / அதிகம் / மிகக் கடுமையானது)"},
+    "out_3":         {"en": "Favourable Weather Conditions", "ta": "சாதகமான வானிலை நிலைமைகள்"},
+    "out_4":         {"en": "Farmer Advisory", "ta": "விவசாயி ஆலோசனை"},
+    "sec_coverage":  {"en": "Coverage", "ta": "உள்ளடக்கம்"},
+    "coverage_p":    {"en": "The current version of the system covers the <b>Aliyarnagar</b> and <b>Vridhachalam</b> districts for both <b>Rust</b> and <b>Late Leaf Spot</b> diseases. Additional districts and diseases can be incorporated as further validated data become available.",
+                      "ta": "தற்போதைய பதிப்பு <b>ஆலியார்நகர்</b> மற்றும் <b>விருத்தாசலம்</b> மாவட்டங்களில் <b>துரு</b> மற்றும் <b>பிந்திய இலைப்புள்ளி</b> ஆகிய இரு நோய்களையும் உள்ளடக்கியுள்ளது. மேலும் சரிபார்க்கப்பட்ட தரவுகள் கிடைக்கும்போது கூடுதல் மாவட்டங்களும் நோய்களும் சேர்க்கப்படும்."},
+}
+
+
+# ============================================================
+# TNAU HEADER  —  logo + centred title bar shown on every page
 # ============================================================
 
 def render_header(active_page: str = "") -> None:
-    """Render the green-and-white TNAU branded header bar."""
-    # Resolve logo path. Look next to this script first, then in /download,
-    # finally fall back to nothing (the alt text shows).
+    """Render the green-and-white TNAU branded header bar (title centred)."""
     logo_candidates = [
         Path(__file__).parent / "tnau_logo.png",
         Path("tnau_logo.png"),
@@ -675,19 +1015,19 @@ def render_header(active_page: str = "") -> None:
         else '<div class="tnau-logo" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--tnau-green-dark);">TNAU</div>'
     )
 
-    badge = f"· {active_page}" if active_page else ""
+    badge_text = tv(PAGE_LABEL, active_page) if active_page else tv(PAGE_LABEL, "Home")
+
     st.markdown(
         f"""
         <div class="tnau-header">
             {logo_html}
             <div class="tnau-title-wrap">
-                <div class="tnau-title">TNAU Disease Prediction System</div>
+                <div class="tnau-title">{t('app_title')}</div>
                 <div class="tnau-subtitle">
-                    Tamil Nadu Agricultural University &nbsp;|&nbsp;
-                    Groundnut Foliar Disease Forewarning
+                    {t('app_sub_1')} &nbsp;|&nbsp; {t('app_sub_2')}
                 </div>
             </div>
-            <div class="tnau-badge">🌱 {active_page or 'Home'}</div>
+            <div class="tnau-badge">🌱 {badge_text}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -926,26 +1266,21 @@ def category_emoji(category):
 # ============================================================
 
 def weather_conditions(disease, x1, x2, x3, x4, rainfall):
+    """Return {text_key: bool} for the conditions favouring the disease."""
     mean_temperature = (x1 + x2) / 2.0
     mean_rh = (x3 + x4) / 2.0
 
     if disease == "Rust":
         return {
-            "Temperature 25–30°C":
-                25 <= mean_temperature <= 30,
-            "Relative humidity >85%":
-                mean_rh > 85,
-            "Rainfall / rainy conditions":
-                rainfall > 0,
+            "cond_rust_temp": 25 <= mean_temperature <= 30,
+            "cond_rh85": mean_rh > 85,
+            "cond_rain": rainfall > 0,
         }
 
     return {
-        "Temperature 20–30°C":
-            20 <= mean_temperature <= 30,
-        "Relative humidity >90%":
-            mean_rh > 90,
-        "Rainfall / wet conditions":
-            rainfall > 0,
+        "cond_lls_temp": 20 <= mean_temperature <= 30,
+        "cond_rh90": mean_rh > 90,
+        "cond_wet": rainfall > 0,
     }
 
 
@@ -955,62 +1290,66 @@ def weather_conditions(disease, x1, x2, x3, x4, rainfall):
 
 def get_advisory(disease, category, crop_stage, favourable_weather):
     if crop_stage not in ACTIVE_STAGES:
-        return (
-            "Disease forewarning is not activated at the selected "
-            "crop stage. Continue regular crop monitoring."
-        )
+        return t("adv_inactive")
 
     if category == "Very Low":
-        return (
-            "Disease pressure is very low. Continue regular field "
-            "monitoring."
-        )
+        return t("adv_verylow")
 
     if category == "Low":
-        return (
-            "Low disease pressure is indicated. Monitor the crop "
-            "regularly, especially older leaves."
-        )
+        return t("adv_low")
 
     if category == "Moderate":
-        if favourable_weather:
-            return (
-                "Moderate disease pressure is indicated and weather "
-                "conditions are favourable. Increase field monitoring "
-                "and follow locally recommended disease-management practices."
-            )
-        return (
-            "Moderate disease pressure is indicated. Continue close "
-            "field monitoring."
-        )
+        return t("adv_mod_fav") if favourable_weather else t("adv_mod")
 
     if category == "High":
-        return (
-            "High disease pressure is forecast. Inspect the crop closely "
-            "and take timely disease-management action according to "
-            "local agricultural recommendations and approved product labels."
-        )
+        return t("adv_high")
 
-    return (
-        "Severe disease pressure is forecast. Immediate field inspection "
-        "and timely disease-management action are recommended according "
-        "to local agricultural recommendations and approved product labels."
-    )
+    return t("adv_severe")
 
 
 # ============================================================
-# SIDEBAR NAVIGATION
+# SIDEBAR  —  language switch (top) + navigation
 # ============================================================
 
 with st.sidebar:
+
+    # ---------- LANGUAGE SWITCH (above navigation) ----------
     st.markdown(
-        """
+        f'<div class="lang-title">🌐 {t("language")}</div>',
+        unsafe_allow_html=True,
+    )
+
+    lang_c1, lang_c2 = st.columns(2)
+    with lang_c1:
+        if st.button(
+            "English",
+            key="btn_lang_en",
+            use_container_width=True,
+            type="primary" if st.session_state["lang"] == "en" else "secondary",
+        ):
+            st.session_state["lang"] = "en"
+            st.rerun()
+    with lang_c2:
+        if st.button(
+            "தமிழ்",
+            key="btn_lang_ta",
+            use_container_width=True,
+            type="primary" if st.session_state["lang"] == "ta" else "secondary",
+        ):
+            st.session_state["lang"] = "ta"
+            st.rerun()
+
+    st.markdown("---")
+
+    # ---------- NAVIGATION ----------
+    st.markdown(
+        f"""
         <div style="padding: 6px 4px 14px 4px;">
             <div style="font-size: 15px; font-weight: 800; color: var(--tnau-green-dark);">
-                🌱 Navigation
+                🌱 {t('nav')}
             </div>
             <div style="font-size: 12px; color: var(--tnau-text-muted); margin-top: 2px;">
-                TNAU Disease Prediction System
+                {t('nav_sub')}
             </div>
         </div>
         """,
@@ -1018,18 +1357,19 @@ with st.sidebar:
     )
 
     page = st.radio(
-        "Go to",
+        t("nav"),
         [
             "Home",
             "Disease Prediction",
             "Disease Information",
             "About Developer",
         ],
+        format_func=lambda v: tv(PAGE_LABEL, v),
         label_visibility="collapsed",
     )
 
     st.markdown("---")
-    st.caption("🌱  TNAU · 2026")
+    st.caption("🌱  " + t("sidebar_foot"))
 
 
 # ============================================================
@@ -1041,7 +1381,7 @@ if page == "Home":
     render_header("Home")
 
     st.markdown(
-        """
+        f"""
         <div class="hero">
             <span class="leaf l1">🍃</span>
             <span class="leaf l2">🌿</span>
@@ -1049,16 +1389,13 @@ if page == "Home":
             <span class="leaf l4">🍃</span>
             <span class="leaf l5">🌿</span>
             <div class="hero-icon">🌱</div>
-            <h1>TNAU Disease Prediction System</h1>
-            <p>
-                Weather-based forewarning for Groundnut Rust and Late Leaf Spot —
-                empowering farmers with timely, actionable disease advisories.
-            </p>
+            <h1>{t('app_title')}</h1>
+            <p>{t('home_hero_p')}</p>
             <div class="hero-chips">
-                <span class="hero-chip">🌾 Groundnut</span>
-                <span class="hero-chip">🌦️ Weather-Driven</span>
-                <span class="hero-chip">📍 District-Specific</span>
-                <span class="hero-chip">👨‍🌾 Farmer-Friendly</span>
+                <span class="hero-chip">🌾 {t('chip_crop')}</span>
+                <span class="hero-chip">🌦️ {t('chip_weather')}</span>
+                <span class="hero-chip">📍 {t('chip_district')}</span>
+                <span class="hero-chip">👨‍🌾 {t('chip_farmer')}</span>
             </div>
         </div>
         """,
@@ -1068,10 +1405,10 @@ if page == "Home":
     # ---- Animated stats banner ----
     s1, s2, s3, s4 = st.columns(4)
     stats = [
-        (s1, "🌱", "2", "Diseases Covered"),
-        (s2, "📍", "2", "Districts Supported"),
-        (s3, "🌦️", "5", "Weather Parameters"),
-        (s4, "🌾", "6", "Crop Stages Tracked"),
+        (s1, "🌱", "2", t("stat_diseases")),
+        (s2, "📍", "2", t("stat_district")),
+        (s3, "🌦️", "5", t("stat_weather")),
+        (s4, "🌾", "6", t("stat_stages")),
     ]
     for col, icon, value, label in stats:
         with col:
@@ -1086,91 +1423,80 @@ if page == "Home":
                 unsafe_allow_html=True,
             )
 
-    st.markdown("### About the System")
+    st.markdown("### " + t("home_about_h"))
 
     st.markdown(
-        """
+        f"""
         <div class="section-card">
             <p style="font-size:15px; line-height:1.7; margin:0; color:var(--tnau-text);">
-                This system provides <b style="color:var(--tnau-green-dark);">weather-based
-                forewarning</b> for two major foliar diseases of groundnut —
-                <b>Rust</b> and <b>Late Leaf Spot</b>. By combining current
-                weather parameters with district-specific knowledge, the
-                application delivers a clear severity prediction and a
-                practical farmer advisory that can help guide field-level
-                decisions.
+                {t('home_about_p1')}
             </p>
             <p style="font-size:15px; line-height:1.7; margin:14px 0 0 0; color:var(--tnau-text);">
-                The interface is intentionally simple: select your district,
-                choose the disease of interest, indicate the current crop
-                stage, enter the local weather values, and click
-                <b style="color:var(--tnau-green-dark);">Predict Disease</b>.
-                The system responds with the predicted severity, an
-                easy-to-read category, and a recommended course of action.
+                {t('home_about_p2')}
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("### What You Get")
+    st.markdown("### " + t("home_get_h"))
 
     f1, f2, f3 = st.columns(3)
     with f1:
         st.markdown(
-            """
+            f"""
             <div class="feature-card">
                 <div class="feature-icon" style="animation: pulse 2.5s ease-in-out infinite;">📊</div>
-                <h3>Predicted Severity</h3>
-                <p>A clear percentage and category that tells you how strong the disease pressure is expected to be.</p>
+                <h3>{t('feat1_h')}</h3>
+                <p>{t('feat1_p')}</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
     with f2:
         st.markdown(
-            """
+            f"""
             <div class="feature-card">
                 <div class="feature-icon" style="animation: bounce 3s ease-in-out infinite; animation-delay: 0.3s;">🌦️</div>
-                <h3>Weather Favourability</h3>
-                <p>See which current weather conditions are conducive to disease development in your field.</p>
+                <h3>{t('feat2_h')}</h3>
+                <p>{t('feat2_p')}</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
     with f3:
         st.markdown(
-            """
+            f"""
             <div class="feature-card">
                 <div class="feature-icon" style="animation: sway 3.5s ease-in-out infinite; animation-delay: 0.6s;">👨‍🌾</div>
-                <h3>Farmer Advisory</h3>
-                <p>Receive a practical, locally-relevant recommendation on monitoring and disease management.</p>
+                <h3>{t('feat3_h')}</h3>
+                <p>{t('feat3_p')}</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown("### Quick Start")
+    st.markdown("### " + t("home_qs_h"))
 
     st.markdown(
-        """
+        f"""
         <div class="section-card">
-            <div class="section-title">Three Simple Steps</div>
+            <div class="section-title">{t('home_qs_title')}</div>
             <div style="display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;">
                 <div style="flex:1; min-width:200px; padding:14px 16px; background:var(--tnau-green-bg); border-radius:12px; border-left:4px solid var(--tnau-green-light);">
-                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">STEP 1</div>
-                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">Select District & Disease</div>
-                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">Choose your location and the disease you want to assess.</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">{t('step')} 1</div>
+                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">{t('step1_h')}</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">{t('step1_p')}</div>
                 </div>
                 <div style="flex:1; min-width:200px; padding:14px 16px; background:var(--tnau-green-bg); border-radius:12px; border-left:4px solid var(--tnau-green-light);">
-                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">STEP 2</div>
-                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">Enter Crop Stage & Weather</div>
-                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">Pick the current growth stage and fill in the local weather values.</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">{t('step')} 2</div>
+                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">{t('step2_h')}</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">{t('step2_p')}</div>
                 </div>
                 <div style="flex:1; min-width:200px; padding:14px 16px; background:var(--tnau-green-bg); border-radius:12px; border-left:4px solid var(--tnau-green-light);">
-                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">STEP 3</div>
-                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">Click Predict Disease</div>
-                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">Get your severity prediction, weather favourability, and advisory.</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); font-weight:600;">{t('step')} 3</div>
+                    <div style="font-size:15px; color:var(--tnau-green-dark); font-weight:700; margin-top:4px;">{t('step3_h')}</div>
+                    <div style="font-size:13px; color:var(--tnau-text-muted); margin-top:4px;">{t('step3_p')}</div>
                 </div>
             </div>
         </div>
@@ -1179,10 +1505,9 @@ if page == "Home":
     )
 
     st.markdown(
-        """
+        f"""
         <div class="app-footer">
-            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
-            Tamil Nadu Agricultural University &nbsp;·&nbsp; 2026
+            🌱 <b>{t('app_title')}</b> &nbsp;·&nbsp; {t('foot_uni')}
         </div>
         """,
         unsafe_allow_html=True,
@@ -1198,14 +1523,14 @@ elif page == "Disease Prediction":
     render_header("Disease Prediction")
 
     st.markdown(
-        """
+        f"""
         <div class="hero" style="padding: 32px 28px;">
             <span class="leaf l1">🍃</span>
             <span class="leaf l2">🌿</span>
             <span class="leaf l4">🌱</span>
             <div class="hero-icon" style="font-size:42px;">🔮</div>
-            <h1 style="font-size:28px;">Disease Prediction</h1>
-            <p>Enter your field conditions and click <b>Predict Disease</b> to receive an instant forecast.</p>
+            <h1 style="font-size:28px;">{tv(PAGE_LABEL, 'Disease Prediction')}</h1>
+            <p>{t('pred_hero_p')}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1215,9 +1540,9 @@ elif page == "Disease Prediction":
     # DISTRICT / DISEASE
     # --------------------------------------------------------
     st.markdown(
-        """
+        f"""
         <div class="section-card">
-            <div class="section-title">Location & Disease</div>
+            <div class="section-title">{t('sec_location')}</div>
         """,
         unsafe_allow_html=True,
     )
@@ -1226,14 +1551,16 @@ elif page == "Disease Prediction":
 
     with col1:
         district = st.selectbox(
-            "📍 Select District",
+            "📍 " + t("sel_district"),
             SUPPORTED_DISTRICTS,
+            format_func=lambda v: tv(DISTRICT_LABEL, v),
         )
 
     with col2:
         disease = st.selectbox(
-            "🦠 Select Disease",
+            "🦠 " + t("sel_disease"),
             ["Rust", "Late Leaf Spot"],
+            format_func=lambda v: tv(DISEASE_LABEL, v),
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1242,30 +1569,32 @@ elif page == "Disease Prediction":
     # CROP STAGE
     # --------------------------------------------------------
     st.markdown(
-        """
+        f"""
         <div class="section-card">
-            <div class="section-title">🌱 Current Groundnut Crop Stage</div>
+            <div class="section-title">🌱 {t('sec_stage')}</div>
             <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:10px;">
-                Choose the stage that best matches your field.
+                {t('stage_help')}
             </div>
         """,
         unsafe_allow_html=True,
     )
 
     crop_stage = st.radio(
-        "Crop stage",
+        t("sec_stage"),
         CROP_STAGES,
+        format_func=lambda v: tv(STAGE_LABEL, v),
         horizontal=True,
         label_visibility="collapsed",
     )
 
+    stage_note = t("stage_active") if crop_stage in ACTIVE_STAGES else t("stage_inactive")
+
     st.markdown(
         f"""
         <div class="stage-card">
-            <b>Selected crop stage:</b> {crop_stage}<br>
+            <b>{t('stage_sel')}</b> {tv(STAGE_LABEL, crop_stage)}<br>
             <span style="font-size:13px; color:var(--tnau-text-muted);">
-            {STAGE_DESCRIPTION[crop_stage]}
-            {" ⚠️ Forewarning is active from the Flowering stage onwards." if crop_stage not in ACTIVE_STAGES else " ✅ Forewarning is active at this stage."}
+            {tv(STAGE_DESC_L, crop_stage)}{stage_note}
             </span>
         </div>
         """,
@@ -1278,9 +1607,9 @@ elif page == "Disease Prediction":
     # WEATHER PARAMETERS
     # --------------------------------------------------------
     st.markdown(
-        """
+        f"""
         <div class="section-card">
-            <div class="section-title">🌦️ Weather Parameters</div>
+            <div class="section-title">🌦️ {t('sec_weather')}</div>
             <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:14px; display:flex; align-items:center; gap:10px;">
                 <span class="rain-container">
                     <span class="rain-cloud">☁️</span>
@@ -1289,7 +1618,7 @@ elif page == "Disease Prediction":
                     <span class="rain-drop d3"></span>
                     <span class="rain-drop d4"></span>
                 </span>
-                Enter the current weather values observed in your field.
+                {t('weather_help')}
             </div>
         """,
         unsafe_allow_html=True,
@@ -1299,7 +1628,7 @@ elif page == "Disease Prediction":
 
     with c1:
         x1 = st.number_input(
-            "🌡️ Maximum Temperature (°C)",
+            t("in_maxtemp"),
             min_value=0.0,
             max_value=50.0,
             value=30.0,
@@ -1307,7 +1636,7 @@ elif page == "Disease Prediction":
         )
 
         x2 = st.number_input(
-            "🌡️ Minimum Temperature (°C)",
+            t("in_mintemp"),
             min_value=0.0,
             max_value=50.0,
             value=22.0,
@@ -1315,7 +1644,7 @@ elif page == "Disease Prediction":
         )
 
         x3 = st.number_input(
-            "💧 Morning Relative Humidity (%)",
+            t("in_rh_morn"),
             min_value=0.0,
             max_value=100.0,
             value=85.0,
@@ -1324,7 +1653,7 @@ elif page == "Disease Prediction":
 
     with c2:
         x4 = st.number_input(
-            "💧 Evening Relative Humidity (%)",
+            t("in_rh_eve"),
             min_value=0.0,
             max_value=100.0,
             value=85.0,
@@ -1332,21 +1661,21 @@ elif page == "Disease Prediction":
         )
 
         x5 = st.number_input(
-            "💨 Wind Speed (km/h)",
+            t("in_wind"),
             min_value=0.0,
             value=5.0,
             step=0.1,
         )
 
         rainfall = st.number_input(
-            "🌧️ Rainfall (mm)",
+            t("in_rain"),
             min_value=0.0,
             value=10.0,
             step=0.1,
         )
 
     phone = st.text_input(
-        "📱 Farmer WhatsApp Number (optional — used only to send an alert for High/Severe predictions)",
+        t("in_phone"),
         placeholder="e.g. 919876543210",
     )
 
@@ -1356,25 +1685,22 @@ elif page == "Disease Prediction":
     # PREDICT BUTTON
     # --------------------------------------------------------
     predict_clicked = st.button(
-        "🔍 PREDICT DISEASE",
+        t("btn_predict"),
         type="primary",
         use_container_width=True,
     )
 
     if predict_clicked:
 
-        # --------------------------------------------
-        # LIVE PREDICTION INDICATOR  (animated)
-        # --------------------------------------------
         st.markdown(
-            """
+            f"""
             <div class="section-card" style="text-align:center; padding:20px; position:relative; overflow:hidden;">
                 <div style="display:inline-flex; align-items:center; gap:10px; font-size:15px; font-weight:700; color:var(--tnau-green-dark);">
                     <span class="live-dot"></span>
-                    ANALYSING FIELD CONDITIONS
+                    {t('analysing')}
                 </div>
                 <div style="margin-top:6px; font-size:12px; color:var(--tnau-text-muted);">
-                    Combining weather data with district-specific disease knowledge…
+                    {t('analysing_sub')}
                 </div>
                 <div class="scanner-line"></div>
             </div>
@@ -1388,17 +1714,16 @@ elif page == "Disease Prediction":
         if crop_stage not in ACTIVE_STAGES:
 
             st.markdown(
-                """
+                f"""
                 <div class="result-card" style="background:linear-gradient(135deg,#fff8e1 0%,#ffffff 70%); border-color:#ffe082;">
-                    <div class="result-label">Forewarning Not Active</div>
+                    <div class="result-label">{t('notactive_lbl')}</div>
                     <div style="font-size:32px; margin:8px 0;">🌱</div>
                     <div style="font-size:18px; font-weight:700; color:#ef6c00;">
-                        Disease forewarning is not activated at this crop stage.
+                        {t('notactive_h')}
                     </div>
                     <div class="result-summary">
-                        <b>Selected Crop Stage:</b> """ + crop_stage + """<br>
-                        Continue regular crop monitoring. Weather-based foliar disease
-                        forewarning becomes active from the <b>Flowering</b> stage onwards.
+                        <b>{t('lbl_stage')}:</b> {tv(STAGE_LABEL, crop_stage)}<br>
+                        {t('notactive_p')}
                     </div>
                 </div>
                 """,
@@ -1418,10 +1743,8 @@ elif page == "Disease Prediction":
             category = severity_category(percentage)
             color = category_color(category)
             emoji = category_emoji(category)
+            category_txt = tv(CATEGORY_LABEL, category)
 
-            # --------------------------------------------
-            # WEATHER CONDITIONS
-            # --------------------------------------------
             conditions = weather_conditions(
                 disease, x1, x2, x3, x4, rainfall,
             )
@@ -1436,20 +1759,20 @@ elif page == "Disease Prediction":
                 <div class="result-card">
                     <div style="display:inline-flex; align-items:center; gap:8px; padding:4px 12px; background:var(--tnau-green-bg); border-radius:999px; margin-bottom:8px;">
                         <span class="live-dot"></span>
-                        <span style="font-size:11px; font-weight:700; color:var(--tnau-green-dark); letter-spacing:0.6px;">PREDICTION COMPLETE</span>
+                        <span style="font-size:11px; font-weight:700; color:var(--tnau-green-dark); letter-spacing:0.6px;">{t('pred_done')}</span>
                     </div>
-                    <div class="result-label">Predicted Severity</div>
+                    <div class="result-label">{t('res_severity')}</div>
                     <div class="severity-number" style="color:{color};">
                         {percentage:.1f}%
                     </div>
-                    <div class="result-label" style="margin-top:8px;">Severity Category</div>
+                    <div class="result-label" style="margin-top:8px;">{t('res_category')}</div>
                     <div class="severity-category" style="color:{color};">
-                        {emoji} {category.upper()}
+                        {emoji} {category_txt.upper()}
                     </div>
                     <div class="result-summary">
-                        <b>District:</b> {district} &nbsp;·&nbsp;
-                        <b>Disease:</b> {disease} &nbsp;·&nbsp;
-                        <b>Crop Stage:</b> {crop_stage}
+                        <b>{t('lbl_district')}:</b> {tv(DISTRICT_LABEL, district)} &nbsp;·&nbsp;
+                        <b>{t('lbl_disease')}:</b> {tv(DISEASE_LABEL, disease)} &nbsp;·&nbsp;
+                        <b>{t('lbl_stage')}:</b> {tv(STAGE_LABEL, crop_stage)}
                     </div>
                 </div>
                 """,
@@ -1460,18 +1783,18 @@ elif page == "Disease Prediction":
             # WEATHER FAVOURABILITY
             # --------------------------------------------
             st.markdown(
-                """
+                f"""
                 <div class="section-card">
-                    <div class="section-title">🌦️ Favourable Weather Conditions</div>
+                    <div class="section-title">🌦️ {t('sec_fav')}</div>
                     <div style="font-size:13px; color:var(--tnau-text-muted); margin-bottom:14px;">
-                        Conditions that favour disease development in your field right now.
+                        {t('fav_help')}
                     </div>
                 """,
                 unsafe_allow_html=True,
             )
 
             weather_cols = st.columns(len(conditions))
-            for col, (condition, present) in zip(weather_cols, conditions.items()):
+            for col, (cond_key, present) in zip(weather_cols, conditions.items()):
                 with col:
                     cls = "ok" if present else "no"
                     mark = "✓" if present else "✗"
@@ -1479,7 +1802,7 @@ elif page == "Disease Prediction":
                         f"""
                         <div class="info-tile {cls}">
                             <div class="tile-icon">{mark}</div>
-                            <div class="tile-text">{condition}</div>
+                            <div class="tile-text">{t(cond_key)}</div>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -1491,28 +1814,30 @@ elif page == "Disease Prediction":
             # GAUGE
             # --------------------------------------------
             st.markdown(
-                """
+                f"""
                 <div class="section-card">
-                    <div class="section-title">📊 Severity Gauge</div>
+                    <div class="section-title">📊 {t('sec_gauge')}</div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            gauge_html = f"""
-            <div class="gauge-wrap" style="padding:6px;">
-              <div style="text-align:center; font-size:13px; color:var(--tnau-text-muted); margin-bottom:6px;">
-                Live severity reading from the prediction engine
-              </div>
-            </div>
-            """
-            st.markdown(gauge_html, unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class="gauge-wrap" style="padding:6px;">
+                  <div style="text-align:center; font-size:13px; color:var(--tnau-text-muted); margin-bottom:6px;">
+                    {t('gauge_live')}
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             fig = go.Figure(
                 go.Indicator(
                     mode="gauge+number",
                     value=percentage,
                     number={"suffix": "%"},
-                    title={"text": "Predicted Severity"},
+                    title={"text": t("res_severity")},
                     gauge={
                         "axis": {"range": [0, 100]},
                         "bar": {"color": color},
@@ -1536,7 +1861,8 @@ elif page == "Disease Prediction":
                 margin=dict(l=20, r=20, t=40, b=20),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                font={"color": "#1b3a23", "family": "Segoe UI, sans-serif"},
+                font={"color": "#1b3a23",
+                      "family": "Segoe UI, Noto Sans Tamil, Nirmala UI, sans-serif"},
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1550,9 +1876,9 @@ elif page == "Disease Prediction":
             )
 
             st.markdown(
-                """
+                f"""
                 <div class="section-card">
-                    <div class="section-title">👨‍🌾 Farmer Advisory</div>
+                    <div class="section-title">👨‍🌾 {t('sec_advisory')}</div>
                 """,
                 unsafe_allow_html=True,
             )
@@ -1571,25 +1897,18 @@ elif page == "Disease Prediction":
             # --------------------------------------------
             if phone and category in ["High", "Severe"]:
 
-                message = f"""
-🌱 TNAU Disease Prediction System
-
-District: {district}
-Disease: {disease}
-Crop Stage: {crop_stage}
-
-Predicted Severity: {percentage:.1f}%
-Severity Category: {category}
-
-Advisory:
-{advisory}
-
-- TNAU Disease Prediction System
-"""
-                encoded_message = urllib.parse.quote(message)
-                whatsapp_url = (
-                    f"https://wa.me/{phone}?text={encoded_message}"
+                message = (
+                    "🌱 " + t("app_title") + "\n\n"
+                    + t("lbl_district") + ": " + tv(DISTRICT_LABEL, district) + "\n"
+                    + t("lbl_disease") + ": " + tv(DISEASE_LABEL, disease) + "\n"
+                    + t("lbl_stage") + ": " + tv(STAGE_LABEL, crop_stage) + "\n\n"
+                    + t("res_severity") + f": {percentage:.1f}%\n"
+                    + t("res_category") + ": " + category_txt + "\n\n"
+                    + t("sec_advisory") + ":\n" + advisory + "\n\n"
+                    + "- " + t("app_title")
                 )
+                encoded_message = urllib.parse.quote(message)
+                whatsapp_url = f"https://wa.me/{phone}?text={encoded_message}"
 
                 st.markdown(
                     f"""
@@ -1607,7 +1926,7 @@ Advisory:
                             width:100%;
                             box-shadow:0 6px 16px rgba(37,211,102,0.32);
                             transition:transform 0.18s ease, box-shadow 0.18s ease;">
-                            📲 Send WhatsApp Alert
+                            {t('btn_whatsapp')}
                         </button>
                     </a>
                     """,
@@ -1615,10 +1934,9 @@ Advisory:
                 )
 
     st.markdown(
-        """
+        f"""
         <div class="app-footer">
-            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
-            Always validate field conditions with local agricultural officers.
+            🌱 <b>{t('app_title')}</b> &nbsp;·&nbsp; {t('foot_validate')}
         </div>
         """,
         unsafe_allow_html=True,
@@ -1634,33 +1952,33 @@ elif page == "Disease Information":
     render_header("Disease Information")
 
     st.markdown(
-        """
+        f"""
         <div class="hero" style="padding: 32px 28px;">
             <span class="leaf l1">🍃</span>
             <span class="leaf l3">🌱</span>
             <span class="leaf l4">🌿</span>
             <div class="hero-icon" style="font-size:42px;">🌱</div>
-            <h1 style="font-size:28px;">Disease Information</h1>
-            <p>Learn about the major foliar diseases of groundnut covered by this system.</p>
+            <h1 style="font-size:28px;">{tv(PAGE_LABEL, 'Disease Information')}</h1>
+            <p>{t('info_hero_p')}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    disease = st.selectbox("Select Disease", ["Rust", "Late Leaf Spot"])
+    disease = st.selectbox(
+        t("sel_disease"),
+        ["Rust", "Late Leaf Spot"],
+        format_func=lambda v: tv(DISEASE_LABEL, v),
+    )
 
     if disease == "Rust":
 
         st.markdown(
-            """
+            f"""
             <div class="section-card">
-                <div class="section-title">Groundnut Rust — Puccinia arachidis</div>
+                <div class="section-title">{t('rust_title')}</div>
                 <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
-                    Rust is a fungal disease of groundnut that produces
-                    rust-coloured pustules on leaves. Disease development
-                    can increase rapidly under favourable humid and rainy
-                    conditions, and severe infection may lead to significant
-                    defoliation and yield loss if not managed in time.
+                    {t('rust_p')}
                 </p>
             </div>
             """,
@@ -1669,19 +1987,19 @@ elif page == "Disease Information":
 
         st.image(
             "Rust.png",
-            caption="Groundnut Rust Disease Symptoms",
+            caption=t("rust_caption"),
             use_container_width=True,
         )
 
         st.markdown(
-            """
+            f"""
             <div class="section-card">
-                <div class="section-title">Symptoms</div>
+                <div class="section-title">{t('sec_symptoms')}</div>
                 <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
-                    <li>Rust-coloured or reddish-brown pustules on leaves</li>
-                    <li>Pustules mainly visible on the lower leaf surface</li>
-                    <li>Increased disease development under humid conditions</li>
-                    <li>Severe infection can damage foliage and reduce yield</li>
+                    <li>{t('rust_s1')}</li>
+                    <li>{t('rust_s2')}</li>
+                    <li>{t('rust_s3')}</li>
+                    <li>{t('rust_s4')}</li>
                 </ul>
             </div>
             """,
@@ -1691,15 +2009,11 @@ elif page == "Disease Information":
     else:
 
         st.markdown(
-            """
+            f"""
             <div class="section-card">
-                <div class="section-title">Late Leaf Spot — Tikka Disease</div>
+                <div class="section-title">{t('lls_title')}</div>
                 <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
-                    Late Leaf Spot produces circular dark lesions on
-                    groundnut leaves and may cause premature defoliation
-                    under severe disease pressure. It is one of the most
-                    destructive foliar diseases of groundnut and requires
-                    timely monitoring and management.
+                    {t('lls_p')}
                 </p>
             </div>
             """,
@@ -1708,19 +2022,19 @@ elif page == "Disease Information":
 
         st.image(
             "LLS.png",
-            caption="Groundnut Late Leaf Spot Disease Symptoms",
+            caption=t("lls_caption"),
             use_container_width=True,
         )
 
         st.markdown(
-            """
+            f"""
             <div class="section-card">
-                <div class="section-title">Symptoms</div>
+                <div class="section-title">{t('sec_symptoms')}</div>
                 <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
-                    <li>Circular dark leaf spots with characteristic halos</li>
-                    <li>Lesions typically appear on older leaves first</li>
-                    <li>Progressive leaf damage as the disease advances</li>
-                    <li>Premature defoliation under severe infection</li>
+                    <li>{t('lls_s1')}</li>
+                    <li>{t('lls_s2')}</li>
+                    <li>{t('lls_s3')}</li>
+                    <li>{t('lls_s4')}</li>
                 </ul>
             </div>
             """,
@@ -1728,10 +2042,9 @@ elif page == "Disease Information":
         )
 
     st.markdown(
-        """
+        f"""
         <div class="app-footer">
-            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
-            Consult local agricultural officers for region-specific management practices.
+            🌱 <b>{t('app_title')}</b> &nbsp;·&nbsp; {t('foot_consult')}
         </div>
         """,
         unsafe_allow_html=True,
@@ -1747,67 +2060,54 @@ elif page == "About Developer":
     render_header("About Developer")
 
     st.markdown(
-        """
+        f"""
         <div class="hero" style="padding: 32px 28px;">
             <span class="leaf l2">🌿</span>
             <span class="leaf l4">🍃</span>
             <div class="hero-icon" style="font-size:42px;">ℹ️</div>
-            <h1 style="font-size:28px;">About the Developer</h1>
-            <p>Meet the team behind the TNAU Disease Prediction System.</p>
+            <h1 style="font-size:28px;">{tv(PAGE_LABEL, 'About Developer')}</h1>
+            <p>{t('about_hero_p')}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
     st.markdown(
-        """
+        f"""
         <div class="section-card">
-            <div class="section-title">Developer</div>
+            <div class="section-title">{t('sec_developer')}</div>
             <p style="font-size:15px; line-height:1.8; color:var(--tnau-text); margin:0;">
-                <b style="color:var(--tnau-green-dark);">Developed by:</b> Kishor Kumar<br>
-                <b style="color:var(--tnau-green-dark);">Project:</b> TNAU Disease Prediction System —
-                Groundnut Foliar Disease Forewarning<br>
-                <b style="color:var(--tnau-green-dark);">Institution:</b> Tamil Nadu Agricultural University (TNAU)<br>
-                <b style="color:var(--tnau-green-dark);">Year:</b> 2026
+                <b style="color:var(--tnau-green-dark);">{t('lbl_devby')}</b> {t('val_devname')}<br>
+                <b style="color:var(--tnau-green-dark);">{t('lbl_project')}</b> {t('val_project')}<br>
+                <b style="color:var(--tnau-green-dark);">{t('lbl_inst')}</b> {t('val_inst')}<br>
+                <b style="color:var(--tnau-green-dark);">{t('lbl_year')}</b> 2026
             </p>
         </div>
 
         <div class="section-card">
-            <div class="section-title">About the System</div>
+            <div class="section-title">{t('sec_aboutsys')}</div>
             <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0;">
-                The TNAU Disease Prediction System is a farmer-friendly
-                decision-support tool that provides weather-based
-                forewarning for two major foliar diseases of groundnut —
-                <b>Rust</b> and <b>Late Leaf Spot</b>. By combining
-                district-specific knowledge with current weather
-                observations, the system delivers a clear severity
-                prediction and a practical farmer advisory that can
-                help guide timely field-level decisions.
+                {t('about_sys_p')}
             </p>
         </div>
 
         <div class="section-card">
-            <div class="section-title">Farmer-Facing Output</div>
+            <div class="section-title">{t('sec_output')}</div>
             <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0 0 10px 0;">
-                The prediction page presents the following information in a
-                clean, easy-to-understand format:
+                {t('output_p')}
             </p>
             <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
-                <li>Predicted Severity (%)</li>
-                <li>Severity Category (Very Low / Low / Moderate / High / Severe)</li>
-                <li>Favourable Weather Conditions</li>
-                <li>Farmer Advisory</li>
+                <li>{t('out_1')}</li>
+                <li>{t('out_2')}</li>
+                <li>{t('out_3')}</li>
+                <li>{t('out_4')}</li>
             </ul>
         </div>
 
         <div class="section-card">
-            <div class="section-title">Coverage</div>
+            <div class="section-title">{t('sec_coverage')}</div>
             <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0;">
-                The current version of the system covers the
-                <b>Aliyarnagar</b> and <b>Vridhachalam</b> districts for
-                both <b>Rust</b> and <b>Late Leaf Spot</b> diseases.
-                Additional districts and diseases can be incorporated as
-                further validated data become available.
+                {t('coverage_p')}
             </p>
         </div>
         """,
@@ -1815,10 +2115,9 @@ elif page == "About Developer":
     )
 
     st.markdown(
-        """
+        f"""
         <div class="app-footer">
-            🌱 <b>TNAU Disease Prediction System</b> &nbsp;·&nbsp;
-            Tamil Nadu Agricultural University &nbsp;·&nbsp; 2026
+            🌱 <b>{t('app_title')}</b> &nbsp;·&nbsp; {t('foot_uni')}
         </div>
         """,
         unsafe_allow_html=True,
