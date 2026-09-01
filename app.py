@@ -277,7 +277,7 @@ html, body, [data-testid="stAppViewContainer"] {
     align-items: center;
     justify-content: center;
     height: 100%;
-    min-height: 220px;
+    min-height: 200px;
     padding: 8px;
 }
 .dev-photo {
