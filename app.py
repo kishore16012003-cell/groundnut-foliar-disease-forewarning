@@ -271,6 +271,55 @@ html, body, [data-testid="stAppViewContainer"] {
     display: inline-block;
 }
 
+/* ----------  Developer photo (About Developer page)  ---------- */
+.dev-photo-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 220px;
+    padding: 8px;
+}
+.dev-photo {
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: var(--tnau-radius);
+    border: 3px solid var(--tnau-green-border);
+    box-shadow: var(--tnau-shadow);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.dev-photo:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--tnau-shadow-hover);
+}
+.dev-photo-fallback {
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 3 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    border-radius: var(--tnau-radius);
+    border: 3px dashed var(--tnau-green-border);
+    background: var(--tnau-green-bg);
+}
+
+/* ----------  Disease symptom image (Disease Information page)  ---------- */
+.disease-img-wrap {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 4px;
+}
+.disease-img-wrap img {
+    border-radius: var(--tnau-radius);
+    border: 1px solid var(--tnau-green-border);
+    box-shadow: var(--tnau-shadow);
+}
+
 /* ----------  Stage card  ---------- */
 .stage-card {
     padding: 16px 20px;
@@ -713,8 +762,8 @@ def tv(mapping: dict, value: str) -> str:
 # ------------------------------------------------------------
 
 DISTRICT_LABEL = {
-    "Aliyarnagar":  {"en": "Aliyarnagar",  "ta": "ஆலியார்நகர்"},
-    "Vridhachalam": {"en": "Vridhachalam", "ta": "விருத்தாசலம்"},
+    "Coimbatore":  {"en": "Coimbatore",  "ta": "கோயம்புத்தூர்"},
+    "Cuddalore": {"en": "Cuddalore", "ta": "கடலூர்"},
 }
 
 DISEASE_LABEL = {
@@ -962,7 +1011,7 @@ TXT = {
                       "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பை உருவாக்கியவர்களைப் பற்றி அறியுங்கள்."},
     "sec_developer": {"en": "Developer", "ta": "உருவாக்கியவர்"},
     "lbl_devby":     {"en": "Developed by:", "ta": "உருவாக்கியவர்:"},
-    "val_devname":   {"en": "Kishor Kumar", "ta": "கிஷோர் குமார்"},
+    "val_devname":   {"en": "Kishor Kumar.B", "ta": "கிஷோர் குமார்.பி"},
     "lbl_project":   {"en": "Project:", "ta": "திட்டம்:"},
     "val_project":   {"en": "TNAU Disease Prediction System — Groundnut Foliar Disease Forewarning",
                       "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பு — நிலக்கடலை இலை நோய் முன்னெச்சரிக்கை"},
@@ -970,6 +1019,11 @@ TXT = {
     "val_inst":      {"en": "Tamil Nadu Agricultural University (TNAU)",
                       "ta": "தமிழ்நாடு வேளாண் பல்கலைக்கழகம் (TNAU)"},
     "lbl_year":      {"en": "Year:", "ta": "ஆண்டு:"},
+    "lbl_designation": {"en": "Designation:", "ta": "பதவி:"},
+    "val_designation": {"en": "Post Graduate Student", "ta": "முதுகலை மாணவர்"},
+    "lbl_dept":      {"en": "Department:", "ta": "துறை:"},
+    "val_dept":      {"en": "Department of Plant Pathology", "ta": "தாவர நோயியல் துறை"},
+    "lbl_email":     {"en": "Email:", "ta": "மின்னஞ்சல்:"},
     "sec_aboutsys":  {"en": "About the System", "ta": "அமைப்பு பற்றி"},
     "about_sys_p":   {"en": "The TNAU Disease Prediction System is a farmer-friendly decision-support tool that provides weather-based forewarning for two major foliar diseases of groundnut — <b>Rust</b> and <b>Late Leaf Spot</b>. By combining district-specific knowledge with current weather observations, the system delivers a clear severity prediction and a practical farmer advisory that can help guide timely field-level decisions.",
                       "ta": "TNAU நோய் முன்னறிவிப்பு அமைப்பு என்பது விவசாயி நட்பு முடிவெடுக்கும் துணைக் கருவியாகும். இது நிலக்கடலையின் இரண்டு முக்கிய இலை நோய்களுக்கு — <b>துரு</b> மற்றும் <b>பிந்திய இலைப்புள்ளி</b> — வானிலை அடிப்படையிலான முன்னெச்சரிக்கை வழங்குகிறது. மாவட்ட வாரியான அறிவை தற்போதைய வானிலைப் பதிவுகளுடன் இணைத்து, தெளிவான தீவிர அளவு முன்னறிவிப்பையும் நடைமுறை ஆலோசனையையும் தருகிறது."},
@@ -982,9 +1036,32 @@ TXT = {
     "out_3":         {"en": "Favourable Weather Conditions", "ta": "சாதகமான வானிலை நிலைமைகள்"},
     "out_4":         {"en": "Farmer Advisory", "ta": "விவசாயி ஆலோசனை"},
     "sec_coverage":  {"en": "Coverage", "ta": "உள்ளடக்கம்"},
-    "coverage_p":    {"en": "The current version of the system covers the <b>Aliyarnagar</b> and <b>Vridhachalam</b> districts for both <b>Rust</b> and <b>Late Leaf Spot</b> diseases. Additional districts and diseases can be incorporated as further validated data become available.",
-                      "ta": "தற்போதைய பதிப்பு <b>ஆலியார்நகர்</b> மற்றும் <b>விருத்தாசலம்</b> மாவட்டங்களில் <b>துரு</b> மற்றும் <b>பிந்திய இலைப்புள்ளி</b> ஆகிய இரு நோய்களையும் உள்ளடக்கியுள்ளது. மேலும் சரிபார்க்கப்பட்ட தரவுகள் கிடைக்கும்போது கூடுதல் மாவட்டங்களும் நோய்களும் சேர்க்கப்படும்."},
+    "coverage_p":    {"en": "The current version of the system covers the <b>Coimbatore</b> and <b>Cuddalore</b> districts for both <b>Rust</b> and <b>Late Leaf Spot</b> diseases. Additional districts and diseases can be incorporated as further validated data become available.",
+                      "ta": "தற்போதைய பதிப்பு <b>கோயம்புத்தூர்</b> மற்றும் <b>கடலூர்</b> மாவட்டங்களில் <b>துரு</b> மற்றும் <b>பிந்திய இலைப்புள்ளி</b> ஆகிய இரு நோய்களையும் உள்ளடக்கியுள்ளது. மேலும் சரிபார்க்கப்பட்ட தரவுகள் கிடைக்கும்போது கூடுதல் மாவட்டங்களும் நோய்களும் சேர்க்கப்படும்."},
 }
+
+
+# ============================================================
+# IMAGE HELPER  —  loads a local image file as a base64 data-URI
+# ============================================================
+
+def _load_image_b64(filename: str) -> str:
+    """Locate an image next to app.py and return it as a base64 data-URI (or '' if missing)."""
+    candidates = [
+        Path(__file__).parent / filename,
+        Path(filename),
+    ]
+    for cand in candidates:
+        if cand.exists():
+            try:
+                import base64
+                data = base64.b64encode(cand.read_bytes()).decode()
+                ext = cand.suffix.lstrip(".").lower()
+                mime = "jpeg" if ext in ("jpg", "jpeg") else ext
+                return f"data:image/{mime};base64,{data}"
+            except Exception:
+                return ""
+    return ""
 
 
 # ============================================================
@@ -1064,7 +1141,7 @@ import math as _math
 
 
 # Districts supported by the system (kept for the UI selectbox).
-SUPPORTED_DISTRICTS = ["Aliyarnagar", "Vridhachalam"]
+SUPPORTED_DISTRICTS = ["Coimbatore", "Cuddalore"]
 
 
 # Disease-specific favourable ranges and factor weights, derived from
@@ -1095,11 +1172,11 @@ DISEASE_PARAMS = {
 }
 
 # Per-district calibration offset on the 0-9 scale.
-# Aliyarnagar (western agroclimatic zone) is cooler and wetter and
-# has historically higher foliar disease pressure than Vridhachalam.
+# Coimbatore (western agroclimatic zone) is cooler and wetter and
+# has historically higher foliar disease pressure than Cuddalore.
 DISTRICT_OFFSET = {
-    "Aliyarnagar":  +0.4,
-    "Vridhachalam": +0.0,
+    "Coimbatore":  +0.4,
+    "Cuddalore": +0.0,
 }
 
 
@@ -1146,7 +1223,7 @@ def predict_7day(district, disease, x1, x2, x3, x4, x5, rainfall):
     Compute the 7-day disease-risk score (0-9 scale).
 
     Inputs:
-        district  : "Aliyarnagar" or "Vridhachalam"
+        district  : "Coimbatore" or "Cuddalore"
         disease   : "Rust" or "Late Leaf Spot"
         x1        : Maximum Temperature (deg C)
         x2        : Minimum Temperature (deg C)
@@ -1973,73 +2050,71 @@ elif page == "Disease Information":
 
     if disease == "Rust":
 
-        st.markdown(
-            f"""
-            <div class="section-card">
-                <div class="section-title">{t('rust_title')}</div>
-                <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
-                    {t('rust_p')}
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        info_col_left, info_col_right = st.columns([1.6, 1], gap="large")
 
-        st.image(
-            "Rust.png",
-            caption=t("rust_caption"),
-            use_container_width=True,
-        )
+        with info_col_left:
+            st.markdown(
+                f"""
+                <div class="section-card">
+                    <div class="section-title">{t('rust_title')}</div>
+                    <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
+                        {t('rust_p')}
+                    </p>
+                </div>
 
-        st.markdown(
-            f"""
-            <div class="section-card">
-                <div class="section-title">{t('sec_symptoms')}</div>
-                <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
-                    <li>{t('rust_s1')}</li>
-                    <li>{t('rust_s2')}</li>
-                    <li>{t('rust_s3')}</li>
-                    <li>{t('rust_s4')}</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                <div class="section-card">
+                    <div class="section-title">{t('sec_symptoms')}</div>
+                    <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
+                        <li>{t('rust_s1')}</li>
+                        <li>{t('rust_s2')}</li>
+                        <li>{t('rust_s3')}</li>
+                        <li>{t('rust_s4')}</li>
+                    </ul>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with info_col_right:
+            st.image(
+                "Rust.png",
+                caption=t("rust_caption"),
+                use_container_width=True,
+            )
 
     else:
 
-        st.markdown(
-            f"""
-            <div class="section-card">
-                <div class="section-title">{t('lls_title')}</div>
-                <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
-                    {t('lls_p')}
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        info_col_left, info_col_right = st.columns([1.6, 1], gap="large")
 
-        st.image(
-            "LLS.png",
-            caption=t("lls_caption"),
-            use_container_width=True,
-        )
+        with info_col_left:
+            st.markdown(
+                f"""
+                <div class="section-card">
+                    <div class="section-title">{t('lls_title')}</div>
+                    <p style="font-size:15px; line-height:1.7; color:var(--tnau-text);">
+                        {t('lls_p')}
+                    </p>
+                </div>
 
-        st.markdown(
-            f"""
-            <div class="section-card">
-                <div class="section-title">{t('sec_symptoms')}</div>
-                <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
-                    <li>{t('lls_s1')}</li>
-                    <li>{t('lls_s2')}</li>
-                    <li>{t('lls_s3')}</li>
-                    <li>{t('lls_s4')}</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                <div class="section-card">
+                    <div class="section-title">{t('sec_symptoms')}</div>
+                    <ul style="font-size:15px; line-height:1.8; color:var(--tnau-text); padding-left:22px; margin:0;">
+                        <li>{t('lls_s1')}</li>
+                        <li>{t('lls_s2')}</li>
+                        <li>{t('lls_s3')}</li>
+                        <li>{t('lls_s4')}</li>
+                    </ul>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with info_col_right:
+            st.image(
+                "LLS.png",
+                caption=t("lls_caption"),
+                use_container_width=True,
+            )
 
     st.markdown(
         f"""
@@ -2072,18 +2147,49 @@ elif page == "About Developer":
         unsafe_allow_html=True,
     )
 
+    dev_photo_src = _load_image_b64("KISHOR.JPEG")
+    dev_photo_html = (
+        f'<img src="{dev_photo_src}" alt="{t("val_devname")}" class="dev-photo" />'
+        if dev_photo_src
+        else '<div class="dev-photo-fallback">🌱</div>'
+    )
+
+    dev_col_left, dev_col_right = st.columns([1.5, 1], gap="large")
+
+    with dev_col_left:
+        st.markdown(
+            f"""
+            <div class="section-card" style="height:100%;">
+                <div class="section-title">{t('sec_developer')}</div>
+                <p style="font-size:15px; line-height:1.9; color:var(--tnau-text); margin:0;">
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_devby')}</b> {t('val_devname')}<br>
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_designation')}</b> {t('val_designation')}<br>
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_dept')}</b> {t('val_dept')}<br>
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_email')}</b>
+                        <a href="mailto:Kishore16012003@gmail.com"
+                           style="color:var(--tnau-green-dark); font-weight:600; text-decoration:none;">
+                           Kishore16012003@gmail.com</a><br>
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_project')}</b> {t('val_project')}<br>
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_inst')}</b> {t('val_inst')}<br>
+                    <b style="color:var(--tnau-green-dark);">{t('lbl_year')}</b> 2026
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with dev_col_right:
+        st.markdown(
+            f"""
+            <div class="dev-photo-wrap">
+                {dev_photo_html}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.markdown(
         f"""
-        <div class="section-card">
-            <div class="section-title">{t('sec_developer')}</div>
-            <p style="font-size:15px; line-height:1.8; color:var(--tnau-text); margin:0;">
-                <b style="color:var(--tnau-green-dark);">{t('lbl_devby')}</b> {t('val_devname')}<br>
-                <b style="color:var(--tnau-green-dark);">{t('lbl_project')}</b> {t('val_project')}<br>
-                <b style="color:var(--tnau-green-dark);">{t('lbl_inst')}</b> {t('val_inst')}<br>
-                <b style="color:var(--tnau-green-dark);">{t('lbl_year')}</b> 2026
-            </p>
-        </div>
-
         <div class="section-card">
             <div class="section-title">{t('sec_aboutsys')}</div>
             <p style="font-size:15px; line-height:1.7; color:var(--tnau-text); margin:0;">
